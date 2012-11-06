@@ -110,11 +110,14 @@ class IO_JPEG {
             $marker_name = $this->marker_name_table{$marker};
             if (is_null($chunk['data'])) {
                 echo "$marker_name:".PHP_EOL;
+		if (isset($opts['hexdump'])) {
+		    $bitin->hexdump($chunk['startOffset'], 2);
+		}
             } else {
-                $length = strlen($chunk['data']);
+                $length = $chunk['length'];
                 echo "$marker_name: length=$length".PHP_EOL;
 		if (isset($opts['hexdump'])) {
-		    $bitin->hexdump($chunk->startOffset, 2 + $length);
+		    $bitin->hexdump($chunk['startOffset'], 2 + $length);
 		}
             }
         }
