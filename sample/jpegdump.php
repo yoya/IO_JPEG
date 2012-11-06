@@ -2,10 +2,10 @@
 
 require_once 'IO/JPEG.php';
 
-$options = getopt("f:");
+$options = getopt("f:h");
 
 function usage() {
-    echo "Usage: php jpegdump.php -f <jpegfile>".PHP_EOL;
+    echo "Usage: php jpegdump.php [-h] -f <jpegfile>".PHP_EOL;
 }
 
 if ((isset($options['f']) === false) ||
@@ -20,6 +20,13 @@ $jpegdata = file_get_contents($jpegfile);
 $jpeg = new IO_JPEG();
 $jpeg->input($jpegdata);
 
-$jpeg->dumpChunk();
+$opts = array();
+
+if (isset($options['h'])) {
+  $opts['hexdump'] = true;
+}
+
+
+$jpeg->dumpChunk($opts);
 
 exit(0);

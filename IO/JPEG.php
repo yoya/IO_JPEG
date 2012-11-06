@@ -45,6 +45,7 @@ class IO_JPEG {
         $bitin = new IO_Bit();
         $bitin->input($this->_jpegdata);
         while ($bitin->hasNextData()) {
+	    list($startOffset, $dummy) = $bitin->getOffset();
             $marker1 = $bitin->getUI8();
             if ($marker1 != 0xFF) {
                 fprintf(STDERR, "dumpChunk: marker1=0x%02X", $marker1);
@@ -53,10 +54,10 @@ class IO_JPEG {
             $marker2 = $bitin->getUI8();
             switch ($marker2) {
             case 0xD8: // SOI (Start of Image)
-                $this->_jpegChunk[] = array('marker' => $marker2, 'data' => null, 'length' => null);
+	        $this->_jpegChunk[] = array('marker' => $marker2, 'data' => null, 'length' => null, 'startOffset' => $startOffset);
                 continue;
             case 0xD9: // EOI (End of Image)
-                $this->_jpegChunk[] = array('marker' => $marker2, 'data' => null, 'length' => null);
+                $this->_jpegChunk[] = array('marker' => $marker2, 'data' => null, 'length' => null, 'startOffset' => $startOffset);
                 if ($eoiFinish) {
                     break 2; // while break;
                 }
@@ -64,7 +65,7 @@ class IO_JPEG {
             case 0xDA: // SOS
                 if ($sosScan === false) {
                     $remainData = $bitin->getDataUntil(false);
-                    $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $remainData, 'length' => null);
+                    $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $remainData, 'length' => null, 'startOffset' => $startOffset);
                     break 2 ; // while break;
                 }
             case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
@@ -84,22 +85,26 @@ class IO_JPEG {
                     list($next_chunk_offset, $dummy) = $bitin->getOffset();
                     $length = $next_chunk_offset - $chunk_data_offset;
                     $bitin->setOffset($chunk_data_offset, 0);
-                    $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $bitin->getData($length), 'length' => null);
+                    $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $bitin->getData($length), 'length' => null, 'startOffset' => $startOffset);
                     break;
                 }
                 break;
             default:
                 $length = $bitin->getUI16BE();
-                $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $bitin->getData($length - 2), 'length' => $length);
+                $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $bitin->getData($length - 2), 'length' => $length, 'startOffset' => $startOffset);
                 continue;
             }
         }
     }
 
-    function dumpChunk() { // for debug
+    function dumpChunk($opts) { // for debug
         if (count($this->_jpegChunk) == 0) {
             $this->_splitChunk(false);
         }
+	if (isset($opts['hexdump'])) {
+	    $bitin = new IO_Bit();
+	    $bitin->input($this->_jpegdata);
+	}
         foreach ($this->_jpegChunk as $chunk) {
             $marker = $chunk['marker'];
             $marker_name = $this->marker_name_table{$marker};
@@ -107,8 +112,10 @@ class IO_JPEG {
                 echo "$marker_name:".PHP_EOL;
             } else {
                 $length = strlen($chunk['data']);
-                $md5 = md5($chunk['data']);
-                echo "$marker_name: length=$length md5=$md5".PHP_EOL;
+                echo "$marker_name: length=$length".PHP_EOL;
+		if (isset($opts['hexdump'])) {
+		    $bitin->hexdump($chunk->startOffset, 2 + $length);
+		}
             }
         }
     }
