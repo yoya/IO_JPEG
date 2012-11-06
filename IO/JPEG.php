@@ -114,8 +114,13 @@ class IO_JPEG {
 		    $bitin->hexdump($chunk['startOffset'], 2);
 		}
             } else {
-                $length = $chunk['length'];
-                echo "$marker_name: length=$length".PHP_EOL;
+		if (isset($chunk['length'])) {
+		    $length = $chunk['length'];
+		    echo "$marker_name: length=$length".PHP_EOL;
+		} else {
+		    $length = 2 + strlen($chunk['data']);
+		    echo "$marker_name: length=(null)".PHP_EOL;
+		}
 		if (isset($opts['hexdump'])) {
 		    $bitin->hexdump($chunk['startOffset'], 2 + $length);
 		}
