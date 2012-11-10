@@ -110,19 +110,12 @@ class IO_JPEG {
             $marker_name = $this->marker_name_table{$marker};
             if (is_null($chunk['data'])) {
                 echo "$marker_name:".PHP_EOL;
-		if (isset($opts['hexdump'])) {
-		    $bitin->hexdump($chunk['startOffset'], 2);
-		}
             } else {
 		if (isset($chunk['length'])) {
 		    $length = $chunk['length'];
 		    echo "$marker_name: length=$length".PHP_EOL;
 		} else {
-		    $length = 2 + strlen($chunk['data']);
 		    echo "$marker_name: length=(null)".PHP_EOL;
-		}
-		if (isset($opts['hexdump'])) {
-		    $bitin->hexdump($chunk['startOffset'], 2 + $length);
 		}
             }
 	    if (isset($chunk['data'])) {
@@ -215,6 +208,22 @@ class IO_JPEG {
 		echo "\tVij[i=$i]:".join(" ", $DHT_Vi)."\n";
 	      }
 	      break;
+	      //	    case 0xDA: //SOS
+	      //	      $SOS_Ns = $chunkDataBitin->getUI8();
+	      //	      echo "\tNs=$SOS_Ns\n";
+	      // break;
+	    }
+	    if (isset($opts['hexdump'])) {
+	      if (is_null($chunk['data'])) {
+		$bitin->hexdump($chunk['startOffset'], 2);
+	      } else {
+		if (isset($chunk['length'])) {
+		    $length = $chunk['length'];
+		} else {
+		  $length = 2 + strlen($chunk['data']);
+		}
+		$bitin->hexdump($chunk['startOffset'], 2 + $length);
+	      }
 	    }
         }
     }
