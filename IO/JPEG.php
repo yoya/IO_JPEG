@@ -152,6 +152,29 @@ class IO_JPEG {
 		  echo "\textension_data:$extension_data\n";
 	      }
 	      break;
+	    case 0xC0: // SOF0
+	    case 0xC1: // SOF1
+	    case 0xC2: // SOF2
+	    case 0xC3: // SOF3
+	    case 0xC5: // SOF5
+	    case 0xC6: // SOF6
+	    case 0xC7: // SOF7
+	      $SOF_P = $chunkDataBitin->getUI8();
+	      $SOF_Y = $chunkDataBitin->getUI16BE();
+	      $SOF_X = $chunkDataBitin->getUI16BE();
+	      $SOF_Nf = $chunkDataBitin->getUI8();
+	      echo "\tP:$SOF_P Y:$SOF_Y X:$SOF_X\n";
+	      echo "\tNf:$SOF_Nf\n";
+	      for ($i = 0 ; $i < $SOF_Nf; $i++) {
+		$SOF_C = $chunkDataBitin->getUI8();
+		$SOF_H = $chunkDataBitin->getUIBits(4);
+		$SOF_V = $chunkDataBitin->getUIBits(4);
+		$SOF_Tq = $chunkDataBitin->getUI8();
+		echo "\t[i=$i]: C:$SOF_C H:$SOF_H V:$SOF_V Tq:$SOF_Tq\n";
+	      }
+	      break;
+	      //	    case 0xDB: // DQT
+	      //		break;
 	    case 0xC4: // DHT
 	      $DHT_Tc = $chunkDataBitin->getUIBits(4);
 	      $DHT_Th = $chunkDataBitin->getUIBits(4);
@@ -169,11 +192,11 @@ class IO_JPEG {
 		  }
 		}
 	      }
-	      echo "\tDHT_Tc:$DHT_Tc\n";
-	      echo "\tDHT_Th:$DHT_Th\n";
-	      echo "\tDHT_Li:".join(" ", $DHT_L)."\n";
+	      echo "\tTc:$DHT_Tc\n";
+	      echo "\tTh:$DHT_Th\n";
+	      echo "\tLi:".join(" ", $DHT_L)."\n";
 	      foreach ($DHT_V as $i => $DHT_Vi) {
-		echo "\tDHT_Vij[$i]:".join(" ", $DHT_Vi)."\n";
+		echo "\tVij[i=$i]:".join(" ", $DHT_Vi)."\n";
 	      }
 	      break;
 	    }
