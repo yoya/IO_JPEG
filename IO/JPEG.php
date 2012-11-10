@@ -38,12 +38,11 @@ class IO_JPEG {
         );
     var $_jpegdata = null;
     var $_jpegChunk = array();
-    function input($jpegdata) {
+    var $_parseChunkDetailAllDone = false;
+    function parse($jpegdata, $eoiFinish = true, $sosScan = true) {
         $this->_jpegdata = $jpegdata;
-    }
-    function _splitChunk($eoiFinish = true, $sosScan = true) {
         $bitin = new IO_Bit();
-        $bitin->input($this->_jpegdata);
+        $bitin->input($jpegdata);
         while ($bitin->hasNextData()) {
 	    list($startOffset, $dummy) = $bitin->getOffset();
             $marker1 = $bitin->getUI8();
@@ -96,8 +95,100 @@ class IO_JPEG {
             }
         }
     }
-
-    function dumpChunk($opts) { // for debug
+    function _parseChunkDetailAll() {
+      foreach ($this->_jpegChunk as &$chunk) {
+	$this->_parseChunkDetail($chunk);
+      }
+      $this->_parseChunkDetailAllDone = true;
+    }
+    function _parseChunkDetail(&$chunk) {
+      if (isset($chunk['data'])) {
+	$chunkDataBitin = new IO_Bit();
+	$chunkDataBitin->input($chunk['data']);
+      }
+      switch ($chunk['marker']) {
+      case 0xD8: // SOI
+      case 0xD9: // EOI
+	// nothing to do
+	break;
+      case 0xE0: // APP0
+	$chunk['identifier'] = $chunkDataBitin->getData(5);
+	if ($identifier === "JFIF\0") {
+	  $version1 = $chunkDataBitin->getUI8();
+	  $version2 = $chunkDataBitin->getUI8();
+	  $chunk['version'] = sprintf("%d.%02d", $version1, $version2);
+	} else {
+	  $chunk['extension_code'] = $chunkDataBitin->getUI8();
+	  $chunk['extension_data'] = $chunkDataBitin->getDataUntil(false);
+		  
+	}
+	break;
+      case 0xC0: // SOF0
+      case 0xC1: // SOF1
+      case 0xC2: // SOF2
+      case 0xC3: // SOF3
+      case 0xC5: // SOF5
+      case 0xC6: // SOF6
+      case 0xC7: // SOF7
+	$chunk['P'] = $chunkDataBitin->getUI8();
+	$chunk['Y'] = $chunkDataBitin->getUI16BE();
+	$chunk['X'] = $chunkDataBitin->getUI16BE();
+	$SOF_Nf = $chunkDataBitin->getUI8();
+	$chunk['Nf'] = $SOF_Nf;
+	$SOF_C = Array();
+	$SOF_H = Array();
+	$SOF_V = Array();
+	$SOF_Tq =Array();
+	for ($i = 0 ; $i < $SOF_Nf; $i++) {
+	  $SOF_C[$i] = $chunkDataBitin->getUI8();
+	  $SOF_H[$i] = $chunkDataBitin->getUIBits(4);
+	  $SOF_V[$i] = $chunkDataBitin->getUIBits(4);
+	  $SOF_Tq[$i] = $chunkDataBitin->getUI8();
+	}
+	$chunk['C'] = $SOF_C;
+	$chunk['H'] =$SOF_H;
+	$chunk['V'] =$SOF_V;
+	$chunk['Tq'] =$SOF_Tq;
+	  break;
+      case 0xDB: // DQT
+	$DQT_Pq =  $chunkDataBitin->getUIBits(4);
+	$DQT_Tq =  $chunkDataBitin->getUIBits(4);
+	$chunk['Pq'] = $DQT_Pq;
+	$chunk['Tq'] = $DQT_Tq;
+	if ($DQT_Pq === 0) {
+	  for ($k = 0 ; $k < 64 ; $k++) {
+	    $DQT_Q[$k] =  $chunkDataBitin->getUI8();
+	  }
+	} else {
+	  for ($k = 0 ; $k < 64 ; $k++) {
+	    $DQT_Q[$k] =  $chunkDataBitin->getUI16BE();
+	  }
+	}
+	$chunk['Q'] = $DQT_Q;
+	break;
+      case 0xC4: // DHT
+	$chunk['Tc'] = $chunkDataBitin->getUIBits(4);
+	$chunk['Th'] = $chunkDataBitin->getUIBits(4);
+	$DHT_L = Array();
+	for ($i = 0 ; $i < 16 ; $i++) {
+	  $DHT_L[$i] = $chunkDataBitin->getUI8();
+	}
+	$chunk['L'] = $DHT_L;
+	$DHT_V = Array();
+	for ($i = 0 ; $i < 16 ; $i++) {
+	  $li = $DHT_L[$i];
+	  if ($li > 0) {
+	    $DHT_V[$i] = Array();
+	    for ($j = 0 ; $j < $li ; $j++) {
+	      $DHT_V[$i][$j] = $chunkDataBitin->getUI8();
+	    }
+	  }
+	}
+	$chunk['V'] = $DHT_V;
+	break;
+      }
+    }
+    function dump($opts) {
         if (count($this->_jpegChunk) == 0) {
             $this->_splitChunk(false);
         }
@@ -105,6 +196,12 @@ class IO_JPEG {
 	    $bitin = new IO_Bit();
 	    $bitin->input($this->_jpegdata);
 	}
+	if (isset($opts['detail'])) {
+	  if ($this->_parseChunkDetailAllDone === false) {
+	    $this->_parseChunkDetailAll();
+	  }
+	}
+
         foreach ($this->_jpegChunk as $chunk) {
             $marker = $chunk['marker'];
             $marker_name = $this->marker_name_table{$marker};
@@ -118,10 +215,6 @@ class IO_JPEG {
 		    echo "$marker_name: length=(null)".PHP_EOL;
 		}
             }
-	    if (isset($chunk['data'])) {
-	      $chunkDataBitin = new IO_Bit();
-	      $chunkDataBitin->input($chunk['data']);
-	    }
 	    switch ($chunk['marker']) {
 	    case 0xD8: // SOI
 	      echo "\tStart Of Image\n";
@@ -130,19 +223,16 @@ class IO_JPEG {
 	      echo "\tEnd Of Image\n";
 		break;
 	    case 0xE0: // APP0
-	      $identifier = $chunkDataBitin->getData(5);
+	      $identifier = $chunk['identifier'];
+	      echo "\tidentifier:$identifier\n";
 	      if ($identifier === "JFIF\0") {
-		  $version1 = $chunkDataBitin->getUI8();
-		  $version2 = $chunkDataBitin->getUI8();
-		  
-		  echo "\tidentifier:$identifier\n";
-		  printf("\tverison:%d.%02d\n", $version1, $version2);
+		$version = $chunk['version'];
+		echo "\tverison:$version\n";
 	      } else {
-		  $extension_code = $chunkDataBitin->getUI8();
-		  $extension_data = $chunkDataBitin->getDataUntil(false);
-		  echo "\tidentifier:$identifier\n";
-		  echo "\textension_code:$extension_code\n";
-		  echo "\textension_data:$extension_data\n";
+		$extension_code = $chunk['extension_code'];
+		$extension_data = $chunk['extension_data'];
+		echo "\textension_code:$extension_code\n";
+		echo "\textension_data:$extension_data\n";
 	      }
 	      break;
 	    case 0xC0: // SOF0
@@ -152,59 +242,43 @@ class IO_JPEG {
 	    case 0xC5: // SOF5
 	    case 0xC6: // SOF6
 	    case 0xC7: // SOF7
-	      $SOF_P = $chunkDataBitin->getUI8();
-	      $SOF_Y = $chunkDataBitin->getUI16BE();
-	      $SOF_X = $chunkDataBitin->getUI16BE();
-	      $SOF_Nf = $chunkDataBitin->getUI8();
+	      $SOF_P = $chunk['P'];
+	      $SOF_Y = $chunk['Y'];
+	      $SOF_X = $chunk['X'];
+	      $SOF_Nf = $chunk['Nf'];
 	      echo "\tP:$SOF_P Y:$SOF_Y X:$SOF_X\n";
 	      echo "\tNf:$SOF_Nf\n";
+	      $SOF_C = $chunk['C'];
+	      $SOF_H = $chunk['H'];
+	      $SOF_V = $chunk['V'];
+	      $SOF_Tq = $chunk['Tq'];
 	      for ($i = 0 ; $i < $SOF_Nf; $i++) {
-		$SOF_C = $chunkDataBitin->getUI8();
-		$SOF_H = $chunkDataBitin->getUIBits(4);
-		$SOF_V = $chunkDataBitin->getUIBits(4);
-		$SOF_Tq = $chunkDataBitin->getUI8();
-		echo "\t[i=$i]: C:$SOF_C H:$SOF_H V:$SOF_V Tq:$SOF_Tq\n";
+		echo "\t[i=$i]: C:{$SOF_C[$i]} H:{$SOF_H[$i]} V:{$SOF_V[$i]} Tq:{$SOF_Tq[$i]}\n";
 	      }
 	      break;
 	    case 0xDB: // DQT
-	      $DQT_Pq =  $chunkDataBitin->getUIBits(4);
-	      $DQT_Tq =  $chunkDataBitin->getUIBits(4);
+	      $DQT_Pq =  $chunk['Pq'];
+	      $DQT_Tq =  $chunk['Tq'];
 	      echo "\tPq:$DQT_Pq Tq:$DQT_Tq\n";
 	      
-	      if ($DQT_Pq === 0) {
-		for ($k = 0 ; $k < 64 ; $k++) {
-		  $DQT_Q[$k] =  $chunkDataBitin->getUI8();
-		}
-	      } else {
-		for ($k = 0 ; $k < 64 ; $k++) {
-		  $DQT_Q[$k] =  $chunkDataBitin->getUI16BE();
-		}
-	      }
-	      //	      var_dump($DQT_Q);
+	      $DQT_Q = $chunk['Q'];
 	      for ($k = 0 ; $k < 64 ; $k+= 8) {
-		echo "\tQ[k=$k]: ".join(" ", array_slice($DQT_Q, $k, 8))."\n";
+		$DQT_Q_k8 = array_slice($DQT_Q, $k, 8);
+		array_walk($DQT_Q_k8, create_function('&$v,$k', '$v = sprintf("%02x", $v);'));
+		printf("\tQ[k=0x%02x]:", $k);
+		echo join(' ', $DQT_Q_k8)."\n";
+		       
 	      }
 	      break;
 	    case 0xC4: // DHT
-	      $DHT_Tc = $chunkDataBitin->getUIBits(4);
-	      $DHT_Th = $chunkDataBitin->getUIBits(4);
-	      $DHT_L = Array();
-	      for ($i = 0 ; $i < 16 ; $i++) {
-		$DHT_L[$i] = $chunkDataBitin->getUI8();
-	      }
-	      $DHT_V = Array();
-	      for ($i = 0 ; $i < 16 ; $i++) {
-		$li = $DHT_L[$i];
-		if ($li > 0) {
-		  $DHT_V[$i] = Array();
-		  for ($j = 0 ; $j < $li ; $j++) {
-		    $DHT_V[$i][$j] = $chunkDataBitin->getUI8();
-		  }
-		}
-	      }
+	      $DHT_Tc = $chunk['Tc'];
+	      $DHT_Th = $chunk['Th'];
+	      $DHT_L = $chunk['L'];
+	      $DHT_V = $chunk['V'];
 	      echo "\tTc:$DHT_Tc Th:$DHT_Th\n";
 	      echo "\tLi:".join(" ", $DHT_L)."\n";
 	      foreach ($DHT_V as $i => $DHT_Vi) {
+		array_walk($DHT_Vi, create_function('&$v,$k', '$v = sprintf("%02x", $v);'));
 		echo "\tVij[i=$i]:".join(" ", $DHT_Vi)."\n";
 	      }
 	      break;

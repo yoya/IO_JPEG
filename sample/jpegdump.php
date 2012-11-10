@@ -2,10 +2,10 @@
 
 require_once 'IO/JPEG.php';
 
-$options = getopt("f:h");
+$options = getopt("f:hd");
 
 function usage() {
-    echo "Usage: php jpegdump.php [-h] -f <jpegfile>".PHP_EOL;
+    echo "Usage: php jpegdump.php [-h] [-d] -f <jpegfile>".PHP_EOL;
 }
 
 if ((isset($options['f']) === false) ||
@@ -13,20 +13,22 @@ if ((isset($options['f']) === false) ||
     usage();
     exit(1);
 }
-
-$jpegfile = $options['f'];
-$jpegdata = file_get_contents($jpegfile);
-
-$jpeg = new IO_JPEG();
-$jpeg->input($jpegdata);
-
 $opts = array();
 
 if (isset($options['h'])) {
   $opts['hexdump'] = true;
 }
+if (isset($options['d'])) {
+  $opts['detail'] = true;
+}
 
 
-$jpeg->dumpChunk($opts);
+$jpegfile = $options['f'];
+$jpegdata = file_get_contents($jpegfile);
+
+$jpeg = new IO_JPEG();
+$jpeg->parse($jpegdata);
+
+$jpeg->dump($opts);
 
 exit(0);
