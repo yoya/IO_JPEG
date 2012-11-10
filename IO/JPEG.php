@@ -173,8 +173,25 @@ class IO_JPEG {
 		echo "\t[i=$i]: C:$SOF_C H:$SOF_H V:$SOF_V Tq:$SOF_Tq\n";
 	      }
 	      break;
-	      //	    case 0xDB: // DQT
-	      //		break;
+	    case 0xDB: // DQT
+	      $DQT_Pq =  $chunkDataBitin->getUIBits(4);
+	      $DQT_Tq =  $chunkDataBitin->getUIBits(4);
+	      echo "\tPq:$DQT_Pq Tq:$DQT_Tq\n";
+	      
+	      if ($DQT_Pq === 0) {
+		for ($k = 0 ; $k < 64 ; $k++) {
+		  $DQT_Q[$k] =  $chunkDataBitin->getUI8();
+		}
+	      } else {
+		for ($k = 0 ; $k < 64 ; $k++) {
+		  $DQT_Q[$k] =  $chunkDataBitin->getUI16BE();
+		}
+	      }
+	      //	      var_dump($DQT_Q);
+	      for ($k = 0 ; $k < 64 ; $k+= 8) {
+		echo "\tQ[k=$k]: ".join(" ", array_slice($DQT_Q, $k, 8))."\n";
+	      }
+	      break;
 	    case 0xC4: // DHT
 	      $DHT_Tc = $chunkDataBitin->getUIBits(4);
 	      $DHT_Th = $chunkDataBitin->getUIBits(4);
