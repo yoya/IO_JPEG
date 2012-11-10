@@ -209,8 +209,7 @@ class IO_JPEG {
 		  }
 		}
 	      }
-	      echo "\tTc:$DHT_Tc\n";
-	      echo "\tTh:$DHT_Th\n";
+	      echo "\tTc:$DHT_Tc Th:$DHT_Th\n";
 	      echo "\tLi:".join(" ", $DHT_L)."\n";
 	      foreach ($DHT_V as $i => $DHT_Vi) {
 		echo "\tVij[i=$i]:".join(" ", $DHT_Vi)."\n";
