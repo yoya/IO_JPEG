@@ -125,6 +125,58 @@ class IO_JPEG {
 		    $bitin->hexdump($chunk['startOffset'], 2 + $length);
 		}
             }
+	    if (isset($chunk['data'])) {
+	      $chunkDataBitin = new IO_Bit();
+	      $chunkDataBitin->input($chunk['data']);
+	    }
+	    switch ($chunk['marker']) {
+	    case 0xD8: // SOI
+	      echo "\tStart Of Image\n";
+		break;
+	    case 0xD9: // EOI
+	      echo "\tEnd Of Image\n";
+		break;
+	    case 0xE0: // APP0
+	      $identifier = $chunkDataBitin->getData(5);
+	      if ($identifier === "JFIF\0") {
+		  $version1 = $chunkDataBitin->getUI8();
+		  $version2 = $chunkDataBitin->getUI8();
+		  
+		  echo "\tidentifier:$identifier\n";
+		  printf("\tverison:%d.%02d\n", $version1, $version2);
+	      } else {
+		  $extension_code = $chunkDataBitin->getUI8();
+		  $extension_data = $chunkDataBitin->getDataUntil(false);
+		  echo "\tidentifier:$identifier\n";
+		  echo "\textension_code:$extension_code\n";
+		  echo "\textension_data:$extension_data\n";
+	      }
+	      break;
+	    case 0xC4: // DHT
+	      $DHT_Tc = $chunkDataBitin->getUIBits(4);
+	      $DHT_Th = $chunkDataBitin->getUIBits(4);
+	      $DHT_L = Array();
+	      for ($i = 0 ; $i < 16 ; $i++) {
+		$DHT_L[$i] = $chunkDataBitin->getUI8();
+	      }
+	      $DHT_V = Array();
+	      for ($i = 0 ; $i < 16 ; $i++) {
+		$li = $DHT_L[$i];
+		if ($li > 0) {
+		  $DHT_V[$i] = Array();
+		  for ($j = 0 ; $j < $li ; $j++) {
+		    $DHT_V[$i][$j] = $chunkDataBitin->getUI8();
+		  }
+		}
+	      }
+	      echo "\tDHT_Tc:$DHT_Tc\n";
+	      echo "\tDHT_Th:$DHT_Th\n";
+	      echo "\tDHT_Li:".join(" ", $DHT_L)."\n";
+	      foreach ($DHT_V as $i => $DHT_Vi) {
+		echo "\tDHT_Vij[$i]:".join(" ", $DHT_Vi)."\n";
+	      }
+	      break;
+	    }
         }
     }
 }
