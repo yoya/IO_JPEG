@@ -113,7 +113,7 @@ class IO_JPEG {
 	  break;
 	case 0xE0: // APP0
 	  $chunk['identifier'] = $chunkDataBitin->getData(5);
-	  if ($identifier === "JFIF\0") {
+	  if ($chunk['identifier'] === "JFIF\0") {
 	      $version1 = $chunkDataBitin->getUI8();
 	      $version2 = $chunkDataBitin->getUI8();
 	      $chunk['version'] = sprintf("%d.%02d", $version1, $version2);
