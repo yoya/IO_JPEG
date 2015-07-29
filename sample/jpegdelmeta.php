@@ -42,7 +42,6 @@ foreach ($jpeg->_jpegChunk as $idx => $chunk) {
 		continue; // skip meta data
 	}
 	$marker_name = $jpeg->marker_name_table[$marker];
-	$filename = sprintf("%02d_%s.jc", $idx, $marker_name);
 	$data = $chunk['data'];
 	if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA) { // SOS) { // SOI or EOI or SOS
 		$data = pack("CC", 0xff, $marker) . $data;
