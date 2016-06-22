@@ -2,10 +2,11 @@
 
 require_once 'IO/JPEG.php';
 
-$options = getopt("f:s");
+$options = getopt("f:sc");
 
 function usage() {
     echo "Usage: php jpegchunk.php -f <jpegfile> -s # split".PHP_EOL;
+    echo "Usage: php jpegchunk.php -f <jpegfile> -s -c # split cat mode".PHP_EOL;
 }
 
 if ((isset($options['f']) === false) ||
@@ -20,11 +21,19 @@ $jpegdata = file_get_contents($jpegfile);
 $jpeg = new IO_JPEG();
 $jpeg->parse($jpegdata);
 
+$catdata = '';
+
+$prev_marker = 0;
+
 if (isset($options['s'])) {
 	foreach ($jpeg->_jpegChunk as $idx => $chunk) {
 		$marker = $chunk['marker'];
 		$marker_name = $jpeg->marker_name_table[$marker];
-		$filename = sprintf("%02d_%s.jc", $idx, $marker_name);
+        if (isset($options['c'])) {
+            $filename = sprintf("%02d_%s.jpg", $idx, $marker_name);
+        } else {
+            $filename = sprintf("%02d_%s.jc", $idx, $marker_name);
+        }
 		$data = $chunk['data'];
 		if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA) { // SOS) { // SOI or EOI or SOS
 			$data = pack("CC", 0xff, $marker) . $data;
@@ -32,8 +41,13 @@ if (isset($options['s'])) {
 			$length = 2 + strlen($chunk['data']);
 			$data = pack("CC", 0xff, $marker) . pack("n", $length) . $data;
 		}
-
-		file_put_contents($filename, $data);
+        if (isset($options['c'])) {
+            $catdata .= $data;
+            file_put_contents($filename, $catdata);
+        } else {
+            file_put_contents($filename, $data);
+        }
+        $prev_marker = $marker;
 	}
 }
 
