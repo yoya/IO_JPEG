@@ -47,8 +47,8 @@ class IO_JPEG {
 	    list($startOffset, $dummy) = $bitin->getOffset();
             $marker1 = $bitin->getUI8();
             if ($marker1 != 0xFF) {
-                fprintf(STDERR, "dumpChunk: marker1=0x%02X", $marker1);
-                return false;
+                fprintf(STDERR, "WARNING: parse marker1=0x%02X offset:0x%X\n", $marker1, $startOffset);
+                continue;
             }
             $marker2 = $bitin->getUI8();
             switch ($marker2) {
