@@ -64,8 +64,12 @@ class IO_JPEG {
             case 0xDA: // SOS
                 if ($sosScan === false) {
                     $remainData = $bitin->getDataUntil(false);
+                    if (substr($remainData, -2, 2) === "\xff\xd9") {
+                        $bitin->incrementOffset(-2, 0); // back from EOI
+                        $remainData = substr($remainData, 0, -2);
+                    }
                     $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $remainData, 'length' => null, 'startOffset' => $startOffset);
-                    break 2 ; // while break;
+                    break;
                 }
             case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
             case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST

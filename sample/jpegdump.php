@@ -2,10 +2,10 @@
 
 require_once 'IO/JPEG.php';
 
-$options = getopt("f:hd");
+$options = getopt("f:hdS");
 
 function usage() {
-    echo "Usage: php jpegdump.php [-h] [-d] -f <jpegfile>".PHP_EOL;
+    echo "Usage: php jpegdump.php [-h] [-d] [-S] -f <jpegfile>".PHP_EOL;
 }
 
 if ((isset($options['f']) === false) ||
@@ -21,13 +21,13 @@ if (isset($options['h'])) {
 if (isset($options['d'])) {
   $opts['detail'] = true;
 }
-
+$noSosScan = isset($options['S']);
 
 $jpegfile = $options['f'];
 $jpegdata = file_get_contents($jpegfile);
 
 $jpeg = new IO_JPEG();
-$jpeg->parse($jpegdata);
+$jpeg->parse($jpegdata, true, ! $noSosScan);
 
 $jpeg->dump($opts);
 
