@@ -1,6 +1,10 @@
 <?php
 
-require_once 'IO/JPEG.php';
+if (is_readable('vendor/autoload.php')) {
+    require 'vendor/autoload.php';
+} else {
+    require_once 'IO/JPEG.php';
+}
 
 $options = getopt("f:hdS");
 
@@ -21,13 +25,13 @@ if (isset($options['h'])) {
 if (isset($options['d'])) {
   $opts['detail'] = true;
 }
-$noSosScan = isset($options['S']);
+$sosScan = ! isset($options['S']);
 
 $jpegfile = $options['f'];
 $jpegdata = file_get_contents($jpegfile);
 
 $jpeg = new IO_JPEG();
-$jpeg->parse($jpegdata, true, ! $noSosScan);
+$jpeg->parse($jpegdata, true, $sosScan);
 
 $jpeg->dump($opts);
 

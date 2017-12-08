@@ -6,6 +6,12 @@
   ref) http://pwiki.awm.jp/~yoya/?JPEG
  */
 
+if (is_readable('vendor/autoload.php')) {
+    require 'vendor/autoload.php';
+} else {
+    require_once 'IO/Bit.php';
+}
+
 class IO_JPEG {
     var $marker_name_table = array(
         0xD8 => 'SOI',

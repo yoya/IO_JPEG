@@ -1,8 +1,12 @@
 <?php
 
-require_once 'IO/JPEG.php';
+if (is_readable('vendor/autoload.php')) {
+    require 'vendor/autoload.php';
+} else {
+    require_once 'IO/JPEG.php';
+}
 
-$options = getopt("f:sc");
+$options = getopt("f:scS");
 
 function usage() {
     echo "Usage: php jpegchunk.php -f <jpegfile> -s # split".PHP_EOL;
@@ -18,12 +22,15 @@ if ((isset($options['f']) === false) ||
 $jpegfile = $options['f'];
 $jpegdata = file_get_contents($jpegfile);
 
+$sosScan = ! isset($options['S']);
+
 $jpeg = new IO_JPEG();
-$jpeg->parse($jpegdata);
+$jpeg->parse($jpegdata, true, $sosScan);
 
 $catdata = '';
 
 $prev_marker = 0;
+
 
 if (isset($options['s'])) {
 	foreach ($jpeg->_jpegChunk as $idx => $chunk) {
