@@ -198,6 +198,30 @@ class IO_JPEG {
             }
             $chunk['V'] = $DHT_V;
             break;
+        case 0xDA: // SOS
+            $chunk['Ls'] = $chunkDataBitin->getUI16BE();
+            $SOS_Ns = $chunkDataBitin->getUI8();
+            $chunk['Ns'] = $SOS_Ns;
+            $SOS_Cs = array();
+            $SOS_Td = array();
+            $SOS_Ta = array();
+            for ($i = 0 ; $i < $SOS_Ns ; $i++) {
+                $SOS_Cs []= $chunkDataBitin->getUI8();
+                $SOS_Td []= $chunkDataBitin->getUIBits(4);
+                $SOS_Ta []= $chunkDataBitin->getUIBits(4);
+            }
+            $chunk['Cs'] = $SOS_Cs;
+            $chunk['Td'] = $SOS_Td;
+            $chunk['Ta'] = $SOS_Ta;
+            $chunk['Ss'] = $chunkDataBitin->getUI8();
+            $chunk['Se'] = $chunkDataBitin->getUI8();
+            $chunk['Ah'] = $chunkDataBitin->getUIBits(4);
+            $chunk['Al'] = $chunkDataBitin->getUIBits(4);
+            break;
+        case 0xDD: // DRI
+            $chunk['Lr'] = $chunkDataBitin->getUI16BE();
+            $chunk['Ri'] = $chunkDataBitin->getUI16BE();
+            break;
         }
     }
     function dump($opts) {
@@ -309,10 +333,37 @@ class IO_JPEG {
                 echo "\tVij[i=$i]:".join(" ", $DHT_Vi)."\n";
             }
             break;
-            //	    case 0xDA: //SOS
-            //	      $SOS_Ns = $chunkDataBitin->getUI8();
-            //	      echo "\tNs=$SOS_Ns\n";
-            // break;
+        case 0xDA: // SOS
+            $SOS_Ls = $chunk['Ls'];
+            $SOS_Ns = $chunk['Ns'];
+            echo "\tLs:$SOS_Ls Ns:$SOS_Ns\n";
+            foreach ($chunk['Cs'] as $i => $SOS_Cs) {
+                $SOS_Td = $chunk['Ta'][$i];
+                $SOS_Ta = $chunk['Td'][$i];
+                echo "\t[i=".($i+1)."] Cs:$SOS_Cs Td:$SOS_Td Ta:$SOS_Ta\n";
+            }
+            $SOS_Ss = $chunk['Ss'];
+            $SOS_Se = $chunk['Se'];
+            $SOS_Ah = $chunk['Ah'];
+            $SOS_Al = $chunk['Al'];
+            echo "\tSs:$SOS_Ss Se:$SOS_Se Ah:$SOS_Ah Al:$SOS_Al\n";
+            echo "\t(Huffman Encoded Data)\n";
+            break;
+        case 0xDD: // DRI
+            $DRI_Lr = $chunk['Lr'];
+            $DRI_Ri = $chunk['Ri'];
+            echo "\tLr:$DRI_Lr Ri:$DRI_Ri\n";
+            break;
+        case 0xD0: // RST0
+        case 0xD1: // RST1
+        case 0xD2: // RST2
+        case 0xD3: // RST3
+        case 0xD4: // RST4
+        case 0xD5: // RST5
+        case 0xD6: // RST6
+        case 0xD7: // RST7
+            echo "\t(Huffman Encoded Data)\n";
+            break;
         }
     }
 }
