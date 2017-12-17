@@ -46,6 +46,15 @@ class IO_JPEG {
         0xDA, // SOS
         0xD9, // EOI
     );
+    var $SOF_description_table = array(
+        /* SOF0  */ 0xC0 => 'Baseline DCT',
+        /* SOF1  */ 0xC1 => 'Extended sequential DCT, Huffman coding',
+        /* SOF2  */ 0xC2 => 'Progressive DCT, Huffman coding',
+        /* SOF3  */ 0xC3 => 'Lossless (sequential), Huffman coding',
+        /* SOF9  */ 0xC9 => 'Extended sequential DCT, arithmatic coding',
+        /* SOF10 */ 0xCA => 'Progressive DCT, arithmatic coding',
+        /* SOF11 */ 0xCB => 'Lossless (sequentiual), arithmatic coding',
+    );
     var $_jpegdata = null;
     var $_jpegChunk = array();
     var $_parseChunkDetailAllDone = false;
@@ -268,7 +277,8 @@ class IO_JPEG {
         }
     }
     function dumpChunkDetail($chunk) {
-        switch ($chunk['marker']) {
+        $marker = $chunk['marker'];
+        switch ($marker) {
         case 0xD8: // SOI
             echo "\tStart Of Image\n";
             break;
@@ -295,6 +305,8 @@ class IO_JPEG {
         case 0xC5: // SOF5
         case 0xC6: // SOF6
         case 0xC7: // SOF7
+            $SOF_description = isset($this->SOF_description_table[$marker])?$this->SOF_description_table[$marker]:"Unknown";
+            echo "\t($SOF_description)\n";
             $SOF_P = $chunk['P'];
             $SOF_Y = $chunk['Y'];
             $SOF_X = $chunk['X'];
