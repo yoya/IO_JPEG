@@ -299,20 +299,20 @@ class IO_JPEG {
             $SOF_Y = $chunk['Y'];
             $SOF_X = $chunk['X'];
             $SOF_Nf = $chunk['Nf'];
-            echo "\tP:$SOF_P Y:$SOF_Y X:$SOF_X\n";
-            echo "\tNf:$SOF_Nf\n";
+            echo "\tP:$SOF_P Y:$SOF_Y X:$SOF_X Nf:$SOF_Nf\n";
             $SOF_C = $chunk['C'];
             $SOF_H = $chunk['H'];
             $SOF_V = $chunk['V'];
             $SOF_Tq = $chunk['Tq'];
             for ($i = 0 ; $i < $SOF_Nf; $i++) {
-                echo "\t[i=$i]: C:{$SOF_C[$i]} H:{$SOF_H[$i]} V:{$SOF_V[$i]} Tq:{$SOF_Tq[$i]}\n";
+                echo "\t[i=".($i+1)."]: C:{$SOF_C[$i]} H:{$SOF_H[$i]} V:{$SOF_V[$i]} Tq:{$SOF_Tq[$i]}\n";
             }
             break;
         case 0xDB: // DQT
-            $DQT_Pq =  $chunk['Pq'];
-            $DQT_Tq =  $chunk['Tq'];
-            echo "\tPq:$DQT_Pq Tq:$DQT_Tq\n";
+            $DQT_Pq = $chunk['Pq'];
+            $DQT_Pq_str = ($DQT_Pq===0)?"8-bit":(($DQT_Pq===1)?"16-bit":"Unknown");
+            $DQT_Tq = $chunk['Tq'];
+            echo "\tPq:$DQT_Pq($DQT_Pq_str) Tq:$DQT_Tq\n";
             $DQT_Q = $chunk['Q'];
             for ($k = 0 ; $k < 64 ; $k+= 8) {
                 $DQT_Q_k8 = array_slice($DQT_Q, $k, 8);
@@ -323,10 +323,11 @@ class IO_JPEG {
             break;
         case 0xC4: // DHT
             $DHT_Tc = $chunk['Tc'];
+            $DHT_Tc_str = ($DHT_Tc===0)?"DC":(($DHT_Tc===1)?"AC":"Unknown");
             $DHT_Th = $chunk['Th'];
             $DHT_L = $chunk['L'];
             $DHT_V = $chunk['V'];
-            echo "\tTc:$DHT_Tc Th:$DHT_Th\n";
+            echo "\tTc:$DHT_Tc($DHT_Tc_str) Th:$DHT_Th\n";
             echo "\tLi:".join(" ", $DHT_L)."\n";
             foreach ($DHT_V as $i => $DHT_Vi) {
                 array_walk($DHT_Vi, create_function('&$v,$k', '$v = sprintf("%02x", $v);'));
