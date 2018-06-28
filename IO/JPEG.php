@@ -231,6 +231,13 @@ class IO_JPEG {
             $chunk['Lr'] = $chunkDataBitin->getUI16BE();
             $chunk['Ri'] = $chunkDataBitin->getUI16BE();
             break;
+        case 0xEE: // APP13 (APPE) Adobe Color transform
+            // https://www.itu.int/rec/T-REC-T.872-201206-I
+            $chunk['ID'] = $chunkDataBitin->getData(5);
+            $chunk['Version'] = $chunkDataBitin->getUI16BE();
+            $chunk['Flag0'] = $chunkDataBitin->getUI16BE();
+            $chunk['Flag1'] = $chunkDataBitin->getUI16BE();
+            $chunk['ColorTransform'] = $chunkDataBitin->getUI8();
         }
     }
     function dump($opts) {
@@ -376,6 +383,16 @@ class IO_JPEG {
         case 0xD6: // RST6
         case 0xD7: // RST7
             echo "\t(Huffman Encoded Data)\n";
+            break;
+        case 0xEE: // APP13 (APPE) Adobe Color transform
+            $APP13_id = $chunk['ID'];
+            $APP13_version = $chunk['Version'];
+            $APP13_flag0 = $chunk['Flag0'];
+            $APP13_flag1 = $chunk['Flag1'];
+            $APP13_colTr =  $chunk['ColorTransform'];
+            $APP13_colTrStr = ["Not Specifiy", "YCbCr", "YCCK"][$APP13_colTr];
+            printf("\tID:%d Version:%d Flag0:0x%04x Flag1:0x%04x ColorTransform:%d(%s)\n",
+                   $APP13_id, $APP13_version, $APP13_flag0, $APP13_flag1, $APP13_colTr, $APP13_colTrStr);
             break;
         }
     }
