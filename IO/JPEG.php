@@ -390,7 +390,7 @@ class IO_JPEG {
             $APP13_flag0 = $chunk['Flag0'];
             $APP13_flag1 = $chunk['Flag1'];
             $APP13_colTr =  $chunk['ColorTransform'];
-            $APP13_colTrStr = ["Not Specifiy", "YCbCr", "YCCK"][$APP13_colTr];
+            $APP13_colTrStr = ["RGB or CMYK", "YCbCr", "YCCK"][$APP13_colTr];
             printf("\tID:%d Version:%d Flag0:0x%04x Flag1:0x%04x ColorTransform:%d(%s)\n",
                    $APP13_id, $APP13_version, $APP13_flag0, $APP13_flag1, $APP13_colTr, $APP13_colTrStr);
             break;
