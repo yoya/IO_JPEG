@@ -6,10 +6,10 @@ if (is_readable('vendor/autoload.php')) {
     require_once 'IO/JPEG.php';
 }
 
-$options = getopt("f:hdS");
+$options = getopt("f:hDS");
 
 function usage() {
-    echo "Usage: php jpegdump.php [-h] [-d] [-S] -f <jpegfile>".PHP_EOL;
+    echo "Usage: php jpegdump.php [-h] [-D] [-S] -f <jpegfile>".PHP_EOL;
 }
 
 if ((isset($options['f']) === false) ||
@@ -22,9 +22,8 @@ $opts = array();
 if (isset($options['h'])) {
   $opts['hexdump'] = true;
 }
-if (isset($options['d'])) {
-  $opts['detail'] = true;
-}
+$opts['detail'] = ! isset($options['D']);
+
 $sosScan = ! isset($options['S']);
 
 $jpegfile = $options['f'];

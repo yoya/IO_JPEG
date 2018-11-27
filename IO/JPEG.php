@@ -248,7 +248,7 @@ class IO_JPEG {
             $bitin = new IO_Bit();
             $bitin->input($this->_jpegdata);
         }
-        if (isset($opts['detail'])) {
+        if (! empty($opts['detail'])) {
             if ($this->_parseChunkDetailAllDone === false) {
                 $this->_parseChunkDetailAll();
             }
@@ -266,7 +266,7 @@ class IO_JPEG {
                     echo "$marker_name: length=(null)".PHP_EOL;
                 }
             }
-            if (isset($opts['detail'])) {
+            if (! empty($opts['detail'])) {
                 $this->dumpChunkDetail($chunk);
             }
             if (isset($opts['hexdump'])) {
