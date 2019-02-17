@@ -73,13 +73,13 @@ class IO_JPEG {
             switch ($marker2) {
             case 0xD8: // SOI (Start of Image)
                 $this->_jpegChunk[] = array('marker' => $marker2, 'data' => null, 'length' => null, 'startOffset' => $startOffset);
-                continue;
+                break;
             case 0xD9: // EOI (End of Image)
                 $this->_jpegChunk[] = array('marker' => $marker2, 'data' => null, 'length' => null, 'startOffset' => $startOffset);
                 if ($eoiFinish) {
                     break 2; // while break;
                 }
-                continue;
+                break;
             case 0xDA: // SOS
                 if ($sosScan === false) {
                     $remainData = $bitin->getDataUntil(false);
@@ -113,7 +113,7 @@ class IO_JPEG {
             default:
                 $length = $bitin->getUI16BE();
                 $this->_jpegChunk[] = array('marker' => $marker2, 'data' => $bitin->getData($length - 2), 'length' => $length, 'startOffset' => $startOffset);
-                continue;
+                break;
             }
         }
     }
@@ -335,7 +335,9 @@ class IO_JPEG {
             $DQT_Q = $chunk['Q'];
             for ($k = 0 ; $k < 64 ; $k+= 8) {
                 $DQT_Q_k8 = array_slice($DQT_Q, $k, 8);
-                array_walk($DQT_Q_k8, create_function('&$v,$k', '$v = sprintf("%02x", $v);'));
+                foreach ($DQT_Q_k8 as $k2 => &$v2) {
+                    $v2 = sprintf("%02x", $v2);
+                }
                 printf("\tQ[k=0x%02x]:", $k);
                 echo join(' ', $DQT_Q_k8)."\n";
             }
@@ -349,7 +351,9 @@ class IO_JPEG {
             echo "\tTc:$DHT_Tc($DHT_Tc_str) Th:$DHT_Th\n";
             echo "\tLi:".join(" ", $DHT_L)."\n";
             foreach ($DHT_V as $i => $DHT_Vi) {
-                array_walk($DHT_Vi, create_function('&$v,$k', '$v = sprintf("%02x", $v);'));
+                foreach ($DHT_Vi as $k => &$v) {
+                    $v = sprintf("%02x", $v);
+                }
                 echo "\tVij[i=$i]:".join(" ", $DHT_Vi)."\n";
             }
             break;
