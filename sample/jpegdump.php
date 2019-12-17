@@ -30,7 +30,12 @@ $jpegfile = $options['f'];
 $jpegdata = file_get_contents($jpegfile);
 
 $jpeg = new IO_JPEG();
-$jpeg->parse($jpegdata, true, $sosScan);
+
+try {
+    $jpeg->parse($jpegdata, true, $sosScan);
+} catch (Exception $e) {
+    echo "Exception".$e->getMessage().PHP_EOL;
+}
 
 $jpeg->dump($opts);
 
