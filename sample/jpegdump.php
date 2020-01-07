@@ -19,12 +19,9 @@ if ((isset($options['f']) === false) ||
 }
 $opts = array();
 
-if (isset($options['h'])) {
-  $opts['hexdump'] = true;
-}
-$opts['detail'] = ! isset($options['D']);
-
-$sosScan = ! isset($options['S']);
+$opts['hexdump'] = isset($options['h']);
+$opts['detail'] = !isset($options['D']);
+$sosScan = !isset($options['S']);
 
 $jpegfile = $options['f'];
 $jpegdata = file_get_contents($jpegfile);

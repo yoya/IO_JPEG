@@ -228,7 +228,7 @@ class IO_JPEG_Chunk {
         }
     }
     function dump($opts = []) {
-        if (isset($opts['hexdump']) && $opts['hexdump']) {
+        if ($opts['hexdump']) {
             $bitin = $opts["bitio"];
         }
         $marker = $this->marker;
@@ -243,10 +243,10 @@ class IO_JPEG_Chunk {
                 echo "$marker_name: length=$length".PHP_EOL;
             }
         }
-        if (! empty($opts['detail'])) {
+        if ($opts['detail']) {
             $this->dumpChunkDetail();
         }
-        if (isset($opts['hexdump'])) {
+        if ($opts['hexdump']) {
             if (is_null($this->data)) {
                 $bitin->hexdump($this->startOffset, 2);
             } else {

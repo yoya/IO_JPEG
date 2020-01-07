@@ -21,7 +21,7 @@ if ((isset($options['f']) === false) ||
 $jpegfile = $options['f'];
 $jpegdata = file_get_contents($jpegfile);
 
-$sosScan = ! isset($options['S']);
+$sosScan = !isset($options['S']);
 
 $jpeg = new IO_JPEG();
 $jpeg->parse($jpegdata, true, $sosScan);

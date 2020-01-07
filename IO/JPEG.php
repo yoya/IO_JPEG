@@ -44,12 +44,12 @@ class IO_JPEG {
         if (count($this->_jpegChunk) == 0) {
             throw new Exception("no jpeg chunk");
         }
-        if (isset($opts['hexdump']) && $opts['hexdump']) {
+        if ($opts['hexdump']) {
             $bitin = new IO_Bit();
             $bitin->input($this->_jpegdata);
             $opts["bitio"] = $bitin;
         }
-        if (! empty($opts['detail'])) {
+        if ($opts['detail']) {
             if ($this->_parseChunkDetailAllDone === false) {
                 $this->_parseChunkDetailAll();
             }
