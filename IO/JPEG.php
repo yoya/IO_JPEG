@@ -37,15 +37,6 @@ class IO_JPEG {
         0xF8 => 'JPG8',  0xF9 => 'JPG9', 0xFA => 'JPG10', 0xFB => 'JPG11',
         0xFC => 'JPG12', 0xFD => 'JPG13'
     );
-    var $stdChunkOrder = array(
-        0xD8, // SOI
-        0xE0, // APP0
-        0xDB, // DQT
-        0xC0, // SOF0
-        0xC4, // DHT
-        0xDA, // SOS
-        0xD9, // EOI
-    );
     var $SOF_description_table = array(
         /* SOF0  */ 0xC0 => 'Baseline DCT',
         /* SOF1  */ 0xC1 => 'Extended sequential DCT, Huffman coding',
