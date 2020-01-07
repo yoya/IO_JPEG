@@ -28,9 +28,9 @@ $jpeg->parse($jpegdata, true, $sosScan);
 
 $catdata = "";
 foreach ($jpeg->_jpegChunk as $idx => $chunk) {
-    $marker = $chunk['marker'];
-    $marker_name = $jpeg->marker_name_table[$marker];
-    $data = $chunk['data'];
+    $marker = $chunk->marker;
+    $marker_name = $chunk->get_marker_name();
+    $data = $chunk->data;
     if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA) { // SOS) { // SOI or EOI or SOS
         if ($marker === 0xDA) { // SOS
             $bit = new IO_Bit();
@@ -50,7 +50,7 @@ foreach ($jpeg->_jpegChunk as $idx => $chunk) {
         }
         $data = pack("CC", 0xff, $marker) . $data;
     } else {
-        $length = 2 + strlen($chunk['data']);
+        $length = 2 + strlen($chunk->data);
         $data = pack("CC", 0xff, $marker) . pack("n", $length) . $data;
     }
     $catdata .= $data;

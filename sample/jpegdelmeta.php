@@ -41,16 +41,16 @@ $jpeg_mandatory_chunk =
 $output_data_list = array();
 
 foreach ($jpeg->_jpegChunk as $idx => $chunk) {
-	$marker = $chunk['marker'];
+	$marker = $chunk->marker;
 	if (in_array($marker, $jpeg_mandatory_chunk) === false) {
 		continue; // skip meta data
 	}
-	$marker_name = $jpeg->marker_name_table[$marker];
-	$data = $chunk['data'];
+	$marker_name = $chunk->get_marker_name();
+	$data = $chunk->data;
 	if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA) { // SOS) { // SOI or EOI or SOS
 		$data = pack("CC", 0xff, $marker) . $data;
 	} else {
-		$length = 2 + strlen($chunk['data']);
+		$length = 2 + strlen($chunk->data);
 		$data = pack("CC", 0xff, $marker) . pack("n", $length) . $data;
 	}
 	$output_data_list []= $data;

@@ -34,18 +34,18 @@ $prev_marker = 0;
 
 if (isset($options['s'])) {
 	foreach ($jpeg->_jpegChunk as $idx => $chunk) {
-		$marker = $chunk['marker'];
+		$marker = $chunk->marker;
 		$marker_name = $jpeg->marker_name_table[$marker];
         if (isset($options['c'])) {
             $filename = sprintf("%02d_%s.jpg", $idx, $marker_name);
         } else {
             $filename = sprintf("%02d_%s.jc", $idx, $marker_name);
         }
-		$data = $chunk['data'];
+		$data = $chunk->data;
 		if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA) { // SOS) { // SOI or EOI or SOS
 			$data = pack("CC", 0xff, $marker) . $data;
 		} else {
-			$length = 2 + strlen($chunk['data']);
+			$length = 2 + strlen($chunk->data);
 			$data = pack("CC", 0xff, $marker) . pack("n", $length) . $data;
 		}
         if (isset($options['c'])) {
