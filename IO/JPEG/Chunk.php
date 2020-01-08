@@ -136,6 +136,12 @@ class IO_JPEG_Chunk {
                 $version1 = $chunkDataBitin->getUI8();
                 $version2 = $chunkDataBitin->getUI8();
                 $this->version = sprintf("%d.%02d", $version1, $version2);
+                $this->U = $chunkDataBitin->getUI8();
+                $this->Xd = $chunkDataBitin->getUI16BE();
+                $this->Yd = $chunkDataBitin->getUI16BE();
+                $this->Xt = $chunkDataBitin->getUI8();
+                $this->Yt = $chunkDataBitin->getUI8();
+                $this->RGB = $chunkDataBitin->getDataUntil(false);
             } else {
                 $this->extension_code = $chunkDataBitin->getUI8();
                 $this->extension_data = $chunkDataBitin->getDataUntil(false);
@@ -223,10 +229,21 @@ class IO_JPEG_Chunk {
             $this->Se = $chunkDataBitin->getUI8();
             $this->Ah = $chunkDataBitin->getUIBits(4);
             $this->Al = $chunkDataBitin->getUIBits(4);
+            $this->huffmanData = $chunkDataBitin->getDataUntil(false);
             break;
         case 0xDD: // DRI
             $this->Lr = $chunkDataBitin->getUI16BE();
             $this->Ri = $chunkDataBitin->getUI16BE();
+            break;
+        case 0xD0: // RST0
+        case 0xD1: // RST1
+        case 0xD2: // RST2
+        case 0xD3: // RST3
+        case 0xD4: // RST4
+        case 0xD5: // RST5
+        case 0xD6: // RST6
+        case 0xD7: // RST7
+            $this->huffmanData = $chunkDataBitin->getDataUntil(false);
             break;
         case 0xEE: // APP13 (APPE) Adobe Color transform
             // https://www.itu.int/rec/T-REC-T.872-201206-I
@@ -285,6 +302,7 @@ class IO_JPEG_Chunk {
             if ($identifier === "JFIF\0") {
                 $version = $this->version;
                 echo "\tverison:$version\n";
+                echo "\tU:{$this->U} Xd:{$this->Xd} Yd:{$this->Yd} Xt:{$this->Xt} Yt:{$this->Yt} RGB(size:".strlen($this->RGB).")\n";
             } else {
                 $extension_code = $this->extension_code;
                 $extension_data = $this->extension_data;
@@ -357,8 +375,9 @@ class IO_JPEG_Chunk {
             $SOS_Se = $this->Se;
             $SOS_Ah = $this->Ah;
             $SOS_Al = $this->Al;
+            $SOS_huffmanData = $this->huffmanData;
             echo "\tSs:$SOS_Ss Se:$SOS_Se Ah:$SOS_Ah Al:$SOS_Al\n";
-            echo "\t(Huffman Encoded Data)\n";
+            echo "\t(Huffman Encoded Data len:".strlen($SOS_huffmanData).")\n";
             break;
         case 0xDD: // DRI
             $DRI_Lr = $this->Lr;
@@ -373,7 +392,8 @@ class IO_JPEG_Chunk {
         case 0xD5: // RST5
         case 0xD6: // RST6
         case 0xD7: // RST7
-            echo "\t(Huffman Encoded Data)\n";
+            $huffmanData = $this->huffmanData;
+            echo "\t(Huffman Encoded Data len:)".strlen($huffmanData)."\n";
             break;
         case 0xEE: // APP13 (APPE) Adobe Color transform
             $APP13_id = $this->ID;
