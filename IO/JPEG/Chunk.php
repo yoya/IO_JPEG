@@ -9,6 +9,7 @@ class IO_JPEG_Chunk {
     var $marker;
     var $data;
     var $length;
+    var $_parseChunkDetailDone = false;
     var $marker_name_table = array(
         0xD8 => 'SOI',
         0xE0 => 'APP0',  0xE1 => 'APP1',  0xE2 => 'APP2',  0xE3 => 'APP3',
@@ -111,6 +112,9 @@ class IO_JPEG_Chunk {
         }
     }
     function _parseChunkDetail() {
+        if ($this->_parseChunkDetailDone) {
+            return ;
+        }
         if (! is_null($this->data)) {
             $chunkDataBitin = new IO_Bit();
             $chunkDataBitin->input($this->data);
@@ -226,6 +230,7 @@ class IO_JPEG_Chunk {
             $this->Flag1 = $chunkDataBitin->getUI16BE();
             $this->ColorTransform = $chunkDataBitin->getUI8();
         }
+        $this->_parseChunkDetailDone = true;
     }
     function dump($opts = []) {
         if ($opts['hexdump']) {
@@ -373,6 +378,32 @@ class IO_JPEG_Chunk {
             $APP13_colTrStr = ["RGB or CMYK", "YCbCr", "YCCK"][$APP13_colTr];
             printf("\tID:%d Version:%d Flag0:0x%04x Flag1:0x%04x ColorTransform:%d(%s)\n",
                    $APP13_id, $APP13_version, $APP13_flag0, $APP13_flag1, $APP13_colTr, $APP13_colTrStr);
+            break;
+        }
+    }
+    function build($bit) {
+        $bit->putUI8(0xFF);
+        assert(isset($this->marker));
+        $marker = $this->marker;
+        $bit->putUI8($marker);
+        switch ($marker) {
+        case 0xD8: // SOI (Start of Image)
+            break;
+        case 0xD9: // EOI (End of Image)
+            break;
+        case 0xDA: // SOS
+        case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
+        case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
+            assert(isset($this->data));
+            // TODO: data escape check
+            $bit->putData($this->data);
+            break;
+        default:
+            assert(isset($this->data));
+            $data = $this->data;
+            $length = strlen($data);
+            $bit->putUI16BE($length + 2);
+            $bit->putData($data);
             break;
         }
     }

@@ -16,7 +16,6 @@ if (is_readable('vendor/autoload.php')) {
 class IO_JPEG {
     var $_jpegdata = null;
     var $_jpegChunk = array();
-    var $_parseChunkDetailAllDone = false;
     function parse($jpegdata, $eoiFinish = true, $sosScan = true) {
         $this->_jpegdata = $jpegdata;
         $bitin = new IO_Bit();
@@ -33,12 +32,6 @@ class IO_JPEG {
             }
         }
     }
-    function _parseChunkDetailAll() {
-        foreach ($this->_jpegChunk as &$chunk) {
-            $chunk->_parseChunkDetail();
-        }
-        $this->_parseChunkDetailAllDone = true;
-    }
     function dump($opts) {
         if (count($this->_jpegChunk) == 0) {
             throw new Exception("no jpeg chunk");
@@ -48,13 +41,21 @@ class IO_JPEG {
             $bitin->input($this->_jpegdata);
             $opts["bitio"] = $bitin;
         }
-        if ($opts['detail']) {
-            if ($this->_parseChunkDetailAllDone === false) {
-                $this->_parseChunkDetailAll();
-            }
-        }
         foreach ($this->_jpegChunk as $chunk) {
+            if ($opts['detail']) {
+                $chunk->_parseChunkDetail();
+            }
             $chunk->dump($opts);
         }
+    }
+    function build($opts = []) {
+        if (count($this->_jpegChunk) == 0) {
+            throw new Exception("no jpeg chunk");
+        }
+        $bit = new IO_Bit();
+        foreach ($this->_jpegChunk as $chunk) {
+            $chunk->build($bit);
+        }
+        echo $bit->output();
     }
 }
