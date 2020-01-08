@@ -69,45 +69,45 @@ class IO_JPEG_Chunk {
         $this->data = null;
         $this->length = null;
         switch ($marker2) {
-            case 0xD8: // SOI (Start of Image)
-                break;
-            case 0xD9: // EOI (End of Image)
-                break;
-            case 0xDA: // SOS
-                if ($sosScan === false) {
-                    $remainData = $bitin->getDataUntil(false);
-                    if (substr($remainData, -2, 2) === "\xff\xd9") {
-                        $bitin->incrementOffset(-2, 0); // back from EOI
-                        $remainData = substr($remainData, 0, -2);
-                    }
-                    $this->data = $remainData;
-                    break;
+        case 0xD8: // SOI (Start of Image)
+            break;
+        case 0xD9: // EOI (End of Image)
+            break;
+        case 0xDA: // SOS
+            if ($sosScan === false) {
+                $remainData = $bitin->getDataUntil(false);
+                if (substr($remainData, -2, 2) === "\xff\xd9") {
+                    $bitin->incrementOffset(-2, 0); // back from EOI
+                    $remainData = substr($remainData, 0, -2);
                 }
-            case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
-            case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
-                list($chunk_data_offset, $dummy) = $bitin->getOffset();
-                while (true) {
-                    $next_marker1 = $bitin->getUI8();
-                    if ($next_marker1 != 0xFF) {
-                        continue;
-                    }
-                    $next_marker2 = $bitin->getUI8();
-                    if ($next_marker2 == 0x00) {
-                        continue;
-                    }
-                    $bitin->incrementOffset(-2, 0); // back from next marker
-                    list($next_chunk_offset, $dummy) = $bitin->getOffset();
-                    $length = $next_chunk_offset - $chunk_data_offset;
-                    $bitin->setOffset($chunk_data_offset, 0);
-                    $this->data = $bitin->getData($length);
-                    break;
+                $this->data = $remainData;
+                break;
+            }
+        case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
+        case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
+            list($chunk_data_offset, $dummy) = $bitin->getOffset();
+            while (true) {
+                $next_marker1 = $bitin->getUI8();
+                if ($next_marker1 != 0xFF) {
+                    continue;
                 }
+                $next_marker2 = $bitin->getUI8();
+                if ($next_marker2 == 0x00) {
+                    continue;
+                }
+                $bitin->incrementOffset(-2, 0); // back from next marker
+                list($next_chunk_offset, $dummy) = $bitin->getOffset();
+                $length = $next_chunk_offset - $chunk_data_offset;
+                $bitin->setOffset($chunk_data_offset, 0);
+                $this->data = $bitin->getData($length);
                 break;
-            default:
-                $length = $bitin->getUI16BE();
-                $this->data = $bitin->getData($length - 2);
-                $this->length = $length;
-                break;
+            }
+            break;
+        default:
+            $length = $bitin->getUI16BE();
+            $this->data = $bitin->getData($length - 2);
+            $this->length = $length;
+            break;
         }
     }
     function _parseChunkDetail() {

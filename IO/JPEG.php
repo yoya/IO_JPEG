@@ -22,7 +22,6 @@ class IO_JPEG {
         $bitin = new IO_Bit();
         $bitin->input($jpegdata);
         while ($bitin->hasNextData()) {
-
             $chunk = new IO_JPEG_Chunk();
             $chunk->parse($bitin, $sosScan);
             if (is_null($chunk->marker)) {
