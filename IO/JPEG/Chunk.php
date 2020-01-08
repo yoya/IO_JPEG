@@ -417,20 +417,165 @@ class IO_JPEG_Chunk {
             break;
         case 0xD9: // EOI (End of Image)
             break;
-        case 0xDA: // SOS
         case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
-            assert(isset($this->data));
             // TODO: data escape check
             $bit->putData($this->data);
             break;
+        case 0xDA: // SOS
+        case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
+        case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
+            if (is_null($this->data)) {
+                $this->_buildChunkDetail();
+            }
+            $data = $this->data;
+            $bit->putData($data);
+            break;
+        case 0xDD: // DRI
         default:
-            assert(isset($this->data));
+            if (is_null($this->data)) {
+                $this->_buildChunkDetail();
+            }
             $data = $this->data;
             $length = strlen($data);
             $bit->putUI16BE($length + 2);
             $bit->putData($data);
             break;
         }
+    }
+    function _buildChunkDetail() {
+        $bit = new IO_Bit();
+        switch ($this->marker) {
+        case 0xD8: // SOI
+        case 0xD9: // EOI
+            // nothing to do
+            break;
+        case 0xE0: // APP0
+            assert(strlen($this->identifier) === 5);
+            $bit->putData($this->identifier, 5);
+            if ($this->identifier === "JFIF\0") {
+                list($version1, $version2) = sscanf($this->version, "%d.%02d");
+                $bit->putUI8($version1);
+                $bit->putUI8($version2);
+                $bit->putUI8($this->U);
+                $bit->putUI16BE($this->Xd);
+                $bit->putUI16BE($this->Yd);
+                $bit->putUI8($this->Xt );
+                $bit->putUI8($this->Yt );
+                $bit->putData($this->RGB);
+            } else {
+                $bit->putUI8($this->extension_code);
+                $bit->putData($this->extension_data);
+            }
+            break;
+        case 0xC0: // SOF0
+        case 0xC1: // SOF1
+        case 0xC2: // SOF2
+        case 0xC3: // SOF3
+        case 0xC5: // SOF5
+        case 0xC6: // SOF6
+        case 0xC7: // SOF7
+            $bit->putUI8($this->P);
+            $bit->putUI16BE($this->Y);
+            $bit->putUI16BE($this->X);
+            $SOF_Nf = $this->Nf;
+            $SOF_C  = $this->C;
+            $SOF_H  = $this->H;
+            $SOF_V  = $this->V;
+            $SOF_Tq = $this->Tq;
+            assert($SOF_Nf === count($SOF_C));
+            assert($SOF_Nf === count($SOF_H));
+            assert($SOF_Nf === count($SOF_V));
+            assert($SOF_Nf === count($SOF_Tq));
+            $bit->putUI8($SOF_Nf);
+            for ($i = 0 ; $i < $SOF_Nf; $i++) {
+                $bit->putUI8($SOF_C[$i]);
+                $bit->putUIBits($SOF_H[$i], 4);
+                $bit->putUIBits($SOF_V[$i], 4);
+                $bit->putUI8($SOF_Tq[$i]);
+            }
+            break;
+        case 0xDB: // DQT
+            $DQT_Pq = $this->Pq;
+            $DQT_Tq = $this->Tq;
+            $DQT_Q = $this->Q;
+            assert(count($DQT_Q) === 64);
+            $bit->putUIBits($DQT_Pq, 4);
+            $bit->putUIBits($DQT_Tq, 4);
+            if ($DQT_Pq === 0) {
+                for ($k = 0 ; $k < 64 ; $k++) {
+                    $bit->putUI8($DQT_Q[$k]);
+                }
+            } else {
+                for ($k = 0 ; $k < 64 ; $k++) {
+                    $bit->putUI16BE($DQT_Q[$k]);
+                }
+            }
+            $this->Q = $DQT_Q;
+            break;
+        case 0xC4: // DHT
+            $DHT_L = $this->L;
+            $DHT_V = $this->V;
+            assert(count($DHT_L) === 16);
+            $bit->putUIBits($this->Tc, 4);
+            $bit->putUIBits($this->Th, 4);
+            for ($i = 0 ; $i < 16 ; $i++) {
+                $bit->putUI8($DHT_L[$i]);
+            }
+            for ($i = 0 ; $i < 16 ; $i++) {
+                $li = $DHT_L[$i];
+                if ($li > 0) {
+                    assert(count($DHT_V[$i]) === $li);
+                    for ($j = 0 ; $j < $li ; $j++) {
+                        $bit->putUI8($DHT_V[$i][$j]);
+                    }
+                }
+            }
+            break;
+        case 0xDA: // SOS
+            $bit->putUI16BE($this->Ls);
+            $SOS_Ns = $this->Ns;
+            $SOS_Cs = $this->Cs;
+            $SOS_Td = $this->Td;
+            $SOS_Ta = $this->Ta;
+            $bit->putUI8($SOS_Ns);
+            assert(count($SOS_Cs) === $SOS_Ns);
+            assert(count($SOS_Td) === $SOS_Ns);
+            assert(count($SOS_Ta) === $SOS_Ns);
+            for ($i = 0 ; $i < $SOS_Ns ; $i++) {
+                $bit->putUI8($SOS_Cs[$i]);
+                $bit->putUIBits($SOS_Td[$i], 4);
+                $bit->putUIBits($SOS_Ta[$i], 4);
+            }
+            $bit->putUI8($this->Ss);
+            $bit->putUI8($this->Se);
+            $bit->putUIBits($this->Ah, 4);
+            $bit->putUIBits($this->Al, 4);
+            $bit->putData($this->huffmanData);
+            break;
+        case 0xDD: // DRI
+            $bit->putUI16BE($this->Lr);
+            $bit->putUI16BE($this->Ri);
+            break;
+        case 0xD0: // RST0
+        case 0xD1: // RST1
+        case 0xD2: // RST2
+        case 0xD3: // RST3
+        case 0xD4: // RST4
+        case 0xD5: // RST5
+        case 0xD6: // RST6
+        case 0xD7: // RST7
+            $bit->putData($this->huffmanData);
+            break;
+        case 0xEE: // APP13 (APPE) Adobe Color transform
+            // https://www.itu.int/rec/T-REC-T.872-201206-I
+            assert(strlen($this->ID) === 5);
+            $bit->putData($this->ID , 5);
+            $bit->putUI16BE($this->Version);
+            $bit->putUI16BE($this->Flag0);
+            $bit->putUI16BE($this->Flag1);
+            $bit->putUI8($this->ColorTransform);
+        }
+        $this->data = $bit->output();
     }
 }
