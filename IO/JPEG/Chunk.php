@@ -92,6 +92,7 @@ class IO_JPEG_Chunk {
             }
         case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
+        case 0xDD: // DRI
             list($chunk_data_offset, $dummy) = $bitin->getOffset();
             while (true) {
                 $next_marker1 = $bitin->getUI8();
@@ -425,13 +426,13 @@ class IO_JPEG_Chunk {
         case 0xDA: // SOS
         case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
+        case 0xDD: // DRI
             if (is_null($this->data)) {
                 $this->_buildChunkDetail();
             }
             $data = $this->data;
             $bit->putData($data);
             break;
-        case 0xDD: // DRI
         default:
             if (is_null($this->data)) {
                 $this->_buildChunkDetail();
