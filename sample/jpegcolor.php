@@ -6,10 +6,11 @@ if (is_readable('vendor/autoload.php')) {
     require_once 'IO/JPEG/Editor.php';
 }
 
-$options = getopt("f:");
+$options = getopt("f:ja:c:");
 
 function usage() {
     echo "Usage: php jpegcolor.php -f <jpegfile>".PHP_EOL;
+    echo "Usage: php jpegcolor.php -f <jpegfile> -j -a <coltrans> -c <id,...>".PHP_EOL;
 }
 
 if ((isset($options['f']) === false) ||
@@ -17,6 +18,9 @@ if ((isset($options['f']) === false) ||
     usage();
     exit(1);
 }
+$jfifMarker_add = isset($options['j']);
+$adobeMarker_add = isset($options['a']);
+$componentIDs_set = isset($options['c'])?explode(",", $options['c']):null;
 
 $jpegfile = $options['f'];
 $jpegdata = file_get_contents($jpegfile);
@@ -29,16 +33,20 @@ $jpeg->parse($jpegdata, $eoiFinish, $sosScan);
 $opts = ["detail" => true];
 $jpeg->rebuild();
 
+$jfifMarkerChunk = null;
+$adobeMarkerChunk = null;
+$sofChunk = null;
+
 foreach ($jpeg->_jpegChunk as $idx => $chunk) {
     $marker = $chunk->marker;
     $marker_name = $chunk->get_marker_name();
     $data = $chunk->data;
     switch ($marker) {
     case 0xE0:  // APP0 (JFIF marker)
-        $chunk->dump($opts);
+        $jfifMarkerChunk = $chunk;
         break;
     case 0xEE:  // APP14 (Adobe marker)
-        $chunk->dump($opts);
+        $adobeMarkerChunk = $chunk;
         break;
     case 0xC0: // SOF0
     case 0xC1: // SOF1
@@ -47,6 +55,21 @@ foreach ($jpeg->_jpegChunk as $idx => $chunk) {
     case 0xC5: // SOF5
     case 0xC6: // SOF6
     case 0xC7: // SOF7
+        $sofChunk = $chunk;
+        break;
+    }
+}
+
+if ((!$jfifMarker_add ) && (! $adobeMarker_add) && is_null($componentIDs_set)) {
+    if (! is_null($jfifMarkerChunk)) {
+        $jfifMarkerChunk->dump($opts);
+    }
+    if (! is_null($adobeMarkerChunk)) {
+        $adobeMarkerChunk->dump($opts);
+    }
+    if (! is_null($sofChunk)) {
+        $chunk = $sofChunk;
+        $marker_name = $chunk->get_marker_name();
         echo "$marker_name:\n";
         $SOF_Nf = $chunk->Nf;
         $SOF_C  = $chunk->C;
@@ -60,8 +83,6 @@ foreach ($jpeg->_jpegChunk as $idx => $chunk) {
             echo " ";
         }
         echo "\n";
-        break;
     }
 }
-
 exit(0);
