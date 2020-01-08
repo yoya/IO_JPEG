@@ -110,25 +110,25 @@ class IO_JPEG_Chunk {
                 break;
         }
     }
-    function _parseChunkDetail(&$chunk) {
-        if (! is_null($chunk->data)) {
+    function _parseChunkDetail() {
+        if (! is_null($this->data)) {
             $chunkDataBitin = new IO_Bit();
-            $chunkDataBitin->input($chunk->data);
+            $chunkDataBitin->input($this->data);
         }
-        switch ($chunk->marker) {
+        switch ($this->marker) {
         case 0xD8: // SOI
         case 0xD9: // EOI
             // nothing to do
             break;
         case 0xE0: // APP0
-            $chunk->identifier = $chunkDataBitin->getData(5);
-            if ($chunk->identifier === "JFIF\0") {
+            $this->identifier = $chunkDataBitin->getData(5);
+            if ($this->identifier === "JFIF\0") {
                 $version1 = $chunkDataBitin->getUI8();
                 $version2 = $chunkDataBitin->getUI8();
-                $chunk->version = sprintf("%d.%02d", $version1, $version2);
+                $this->version = sprintf("%d.%02d", $version1, $version2);
             } else {
-                $chunk->extension_code = $chunkDataBitin->getUI8();
-                $chunk->extension_data = $chunkDataBitin->getDataUntil(false);
+                $this->extension_code = $chunkDataBitin->getUI8();
+                $this->extension_data = $chunkDataBitin->getDataUntil(false);
             }
             break;
         case 0xC0: // SOF0

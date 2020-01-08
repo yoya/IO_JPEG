@@ -36,7 +36,7 @@ class IO_JPEG {
     }
     function _parseChunkDetailAll() {
         foreach ($this->_jpegChunk as &$chunk) {
-            $chunk->_parseChunkDetail($chunk);
+            $chunk->_parseChunkDetail();
         }
         $this->_parseChunkDetailAllDone = true;
     }
