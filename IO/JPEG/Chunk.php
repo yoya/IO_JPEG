@@ -257,6 +257,7 @@ class IO_JPEG_Chunk {
         $this->_parseChunkDetailDone = true;
     }
     function dump($opts = []) {
+        $opts['hexdump'] = !empty($opts['hexdump']);
         if ($opts['hexdump']) {
             $bitin = $opts["bitio"];
         }

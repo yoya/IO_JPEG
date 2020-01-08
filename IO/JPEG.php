@@ -33,6 +33,8 @@ class IO_JPEG {
         }
     }
     function dump($opts) {
+        $opts['hexdump'] = !empty($opts['hexdump']);
+        $opts['detail'] = isset($opts['detail'])?$opts['detail']:false;
         if (count($this->_jpegChunk) == 0) {
             throw new Exception("no jpeg chunk");
         }
