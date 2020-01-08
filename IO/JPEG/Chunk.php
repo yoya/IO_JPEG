@@ -274,6 +274,7 @@ class IO_JPEG_Chunk {
             }
         }
         if ($opts['detail']) {
+            $this->_parseChunkDetail();
             $this->dumpChunkDetail();
         }
         if ($opts['hexdump']) {

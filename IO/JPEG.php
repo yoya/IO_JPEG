@@ -44,9 +44,6 @@ class IO_JPEG {
             $opts["bitio"] = $bitin;
         }
         foreach ($this->_jpegChunk as $chunk) {
-            if ($opts['detail']) {
-                $chunk->_parseChunkDetail();
-            }
             $chunk->dump($opts);
         }
     }
