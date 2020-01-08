@@ -29,7 +29,8 @@ $jpegdata = file_get_contents($jpegfile);
 $jpeg = new IO_JPEG();
 
 try {
-    $jpeg->parse($jpegdata, true, $sosScan);
+    $eoiFinish = false;
+    $jpeg->parse($jpegdata, $eoiFinish, $sosScan);
 } catch (Exception $e) {
     echo "Exception".$e->getMessage().PHP_EOL;
 }
