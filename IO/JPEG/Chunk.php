@@ -5,6 +5,12 @@
   (c) 2020/01/07 yoya@awm.jp
  */
 
+if (is_readable('vendor/autoload.php')) {
+    require 'vendor/autoload.php';
+} else {
+    require_once 'IO/Bit.php';
+}
+
 class IO_JPEG_Chunk {
     var $marker;
     var $data;
