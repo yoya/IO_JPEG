@@ -176,40 +176,62 @@ class IO_JPEG_Chunk {
             $this->Tq =$SOF_Tq;
             break;
         case 0xDB: // DQT
-            $DQT_Pq = $chunkDataBitin->getUIBits(4);
-            $DQT_Tq = $chunkDataBitin->getUIBits(4);
-            $this->Pq = $DQT_Pq;
-            $this->Tq = $DQT_Tq;
-            if ($DQT_Pq === 0) {
-                for ($k = 0 ; $k < 64 ; $k++) {
-                    $DQT_Q[$k] = $chunkDataBitin->getUI8();
-                }
-            } else {
-                for ($k = 0 ; $k < 64 ; $k++) {
-                    $DQT_Q[$k] = $chunkDataBitin->getUI16BE();
-                }
-            }
-            $this->Q = $DQT_Q;
-            break;
-        case 0xC4: // DHT
-            $this->Tc = $chunkDataBitin->getUIBits(4);
-            $this->Th = $chunkDataBitin->getUIBits(4);
-            $DHT_L = Array();
-            for ($i = 0 ; $i < 16 ; $i++) {
-                $DHT_L[$i] = $chunkDataBitin->getUI8();
-            }
-            $this->L = $DHT_L;
-            $DHT_V = Array();
-            for ($i = 0 ; $i < 16 ; $i++) {
-                $li = $DHT_L[$i];
-                if ($li > 0) {
-                    $DHT_V[$i] = Array();
-                    for ($j = 0 ; $j < $li ; $j++) {
-                        $DHT_V[$i][$j] = $chunkDataBitin->getUI8();
+            //
+            $DQT_Pq = [];
+            $DQT_Tq = [];
+            $DQT_Q  = [];
+            for ($i = 0 ; $chunkDataBitin->hasNextData(64); $i++) { // XXX
+                $Pq = $chunkDataBitin->getUIBits(4);
+                $Tq = $chunkDataBitin->getUIBits(4);
+                $Q = [];
+                if ($Pq === 0) {
+                    for ($k = 0 ; $k < 64 ; $k++) {
+                        $Q[$k] = $chunkDataBitin->getUI8();
+                    }
+                } else {
+                    for ($k = 0 ; $k < 64 ; $k++) {
+                        $Q[$k] = $chunkDataBitin->getUI16BE();
                     }
                 }
+                $DQT_Pq []= $Pq;
+                $DQT_Tq []= $Tq;
+                $DQT_Q  []= $Q;
             }
-            $this->V = $DHT_V;
+            $this->Pq = $DQT_Pq;
+            $this->Tq = $DQT_Tq;
+            $this->Q  = $DQT_Q;
+            break;
+        case 0xC4: // DHT
+            $DHT_Tc = [];
+            $DHT_Th = [];
+            $DHT_L  = [];
+            $DHT_V  = [];
+            for ($i = 0 ; $chunkDataBitin->hasNextData(1+16+16); $i++) { // XXX
+                $Tc = $chunkDataBitin->getUIBits(4);
+                $Th = $chunkDataBitin->getUIBits(4);
+                $L = [];
+                for ($i = 0 ; $i < 16 ; $i++) {
+                    $L[$i] = $chunkDataBitin->getUI8();
+                }
+                $V = [];
+                for ($i = 0 ; $i < 16 ; $i++) {
+                    $li = $L[$i];
+                    if ($li > 0) {
+                        $V[$i] = [];
+                        for ($j = 0 ; $j < $li ; $j++) {
+                            $V[$i][$j] = $chunkDataBitin->getUI8();
+                        }
+                    }
+                }
+                $DHT_Tc [] = $Tc;
+                $DHT_Th [] = $Th;
+                $DHT_L  [] = $L;
+                $DHT_V  [] = $V;
+            }
+            $this->Tc = $DHT_Tc;
+            $this->Th = $DHT_Th;
+            $this->L  = $DHT_L;
+            $this->V  = $DHT_V;
             break;
         case 0xDA: // SOS
             $this->Ls = $chunkDataBitin->getUI16BE();
@@ -337,32 +359,43 @@ class IO_JPEG_Chunk {
             break;
         case 0xDB: // DQT
             $DQT_Pq = $this->Pq;
-            $DQT_Pq_str = ($DQT_Pq===0)?"8-bit":(($DQT_Pq===1)?"16-bit":"Unknown");
-            $DQT_Tq = $this->Tq;
-            echo "\tPq:$DQT_Pq($DQT_Pq_str) Tq:$DQT_Tq\n";
-            $DQT_Q = $this->Q;
-            for ($k = 0 ; $k < 64 ; $k+= 8) {
-                $DQT_Q_k8 = array_slice($DQT_Q, $k, 8);
-                foreach ($DQT_Q_k8 as $k2 => &$v2) {
-                    $v2 = sprintf("%02x", $v2);
+            foreach ($DQT_Pq as $idx => $Pq) {
+                $Pq_str = ($Pq===0)?"8-bit":(($Pq===1)?"16-bit":"Unknown");
+                $Tq = $this->Tq[$idx];
+                echo "\tPq:$Pq($Pq_str) Tq:$Tq\n";
+                $Q = $this->Q[$idx];
+                for ($k = 0 ; $k < 64 ; $k+= 8) {
+                    $Q_k8 = array_slice($Q, $k, 8);
+                    foreach ($Q_k8 as $k2 => &$v2) {
+                        if ($Pq === 0) {
+                            $v2 = sprintf("%02x", $v2);  // 8-bits
+                        } else {
+                            $v2 = sprintf("%04x", $v2); // 16-bits
+                        }
+                    }
+                    printf("\tQ[k=0x%02x]:", $k);
+                    echo join(' ', $Q_k8)."\n";
                 }
-                printf("\tQ[k=0x%02x]:", $k);
-                echo join(' ', $DQT_Q_k8)."\n";
             }
             break;
         case 0xC4: // DHT
             $DHT_Tc = $this->Tc;
-            $DHT_Tc_str = ($DHT_Tc===0)?"DC":(($DHT_Tc===1)?"AC":"Unknown");
             $DHT_Th = $this->Th;
             $DHT_L = $this->L;
             $DHT_V = $this->V;
-            echo "\tTc:$DHT_Tc($DHT_Tc_str) Th:$DHT_Th\n";
-            echo "\tLi:".join(" ", $DHT_L)."\n";
-            foreach ($DHT_V as $i => $DHT_Vi) {
-                foreach ($DHT_Vi as $k => &$v) {
-                    $v = sprintf("%02x", $v);
+            foreach ($DHT_Tc as $idx => $Tc) {
+                $Th = $DHT_Th[$idx];
+                $L  = $DHT_L[$idx];
+                $V  = $DHT_V[$idx];
+                $Tc_str = ($Tc===0)?"DC":(($Tc===1)?"AC":"Unknown");
+                echo "\tTc:$Tc($Tc_str) Th:$Th\n";
+                echo "\tLi:".join(" ", $L)."\n";
+                foreach ($V as $i => $Vi) {
+                    foreach ($Vi as $k => &$v) {
+                        $v = sprintf("%02x", $v);
+                    }
+                    echo "\tVij[i=$i]:".join(" ", $Vi)."\n";
                 }
-                echo "\tVij[i=$i]:".join(" ", $DHT_Vi)."\n";
             }
             break;
         case 0xDA: // SOS
@@ -378,6 +411,7 @@ class IO_JPEG_Chunk {
             $SOS_Se = $this->Se;
             $SOS_Ah = $this->Ah;
             $SOS_Al = $this->Al;
+            // TODO: data escape check
             $SOS_huffmanData = $this->huffmanData;
             echo "\tSs:$SOS_Ss Se:$SOS_Se Ah:$SOS_Ah Al:$SOS_Al\n";
             echo "\t(Huffman Encoded Data len:".strlen($SOS_huffmanData).")\n";
@@ -395,6 +429,7 @@ class IO_JPEG_Chunk {
         case 0xD5: // RST5
         case 0xD6: // RST6
         case 0xD7: // RST7
+            // TODO: data escape check
             $huffmanData = $this->huffmanData;
             echo "\t(Huffman Encoded Data len:)".strlen($huffmanData)."\n";
             break;
@@ -422,9 +457,6 @@ class IO_JPEG_Chunk {
             break;
         case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
-            // TODO: data escape check
-            $bit->putData($this->data);
-            break;
         case 0xDA: // SOS
         case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
@@ -502,35 +534,46 @@ class IO_JPEG_Chunk {
             $DQT_Pq = $this->Pq;
             $DQT_Tq = $this->Tq;
             $DQT_Q = $this->Q;
-            assert(count($DQT_Q) === 64);
-            $bit->putUIBits($DQT_Pq, 4);
-            $bit->putUIBits($DQT_Tq, 4);
-            if ($DQT_Pq === 0) {
-                for ($k = 0 ; $k < 64 ; $k++) {
-                    $bit->putUI8($DQT_Q[$k]);
-                }
-            } else {
-                for ($k = 0 ; $k < 64 ; $k++) {
-                    $bit->putUI16BE($DQT_Q[$k]);
+            foreach ($DQT_Pq as $idx => $Pq) {
+                $Tq = $this->Tq[$idx];
+                $Q = $this->Q[$idx];
+                assert(count($Q) === 64);
+                $bit->putUIBits($Pq, 4);
+                $bit->putUIBits($Tq, 4);
+                if ($Pq === 0) {
+                    for ($k = 0 ; $k < 64 ; $k++) {
+                        $bit->putUI8($Q[$k]);
+                    }
+                } else {
+                    for ($k = 0 ; $k < 64 ; $k++) {
+                        $bit->putUI16BE($Q[$k]);
+                    }
                 }
             }
-            $this->Q = $DQT_Q;
             break;
         case 0xC4: // DHT
+            $DHT_Tc = $this->Tc;
+            $DHT_Th = $this->Th;
             $DHT_L = $this->L;
             $DHT_V = $this->V;
-            assert(count($DHT_L) === 16);
-            $bit->putUIBits($this->Tc, 4);
-            $bit->putUIBits($this->Th, 4);
-            for ($i = 0 ; $i < 16 ; $i++) {
-                $bit->putUI8($DHT_L[$i]);
-            }
-            for ($i = 0 ; $i < 16 ; $i++) {
-                $li = $DHT_L[$i];
-                if ($li > 0) {
-                    assert(count($DHT_V[$i]) === $li);
-                    for ($j = 0 ; $j < $li ; $j++) {
-                        $bit->putUI8($DHT_V[$i][$j]);
+            foreach ($DHT_Tc as $idx => $Tc) {
+                $Th = $DHT_Th[$idx];
+                $L  = $DHT_L[$idx];
+                $V  = $DHT_V[$idx];
+                assert(count($L) === 16);
+                $bit->putUIBits($Tc, 4);
+                $bit->putUIBits($Th, 4);
+                for ($i = 0 ; $i < 16 ; $i++) {
+                    $bit->putUI8($L[$i]);
+                }
+                for ($i = 0 ; $i < 16 ; $i++) {
+                    $Li = $L[$i];
+                    if ($Li > 0) {
+                        $Vi = $V[$i];
+                        assert(count($Vi) === $Li);
+                        for ($j = 0 ; $j < $Li ; $j++) {
+                            $bit->putUI8($Vi[$j]);
+                        }
                     }
                 }
             }
@@ -554,6 +597,7 @@ class IO_JPEG_Chunk {
             $bit->putUI8($this->Se);
             $bit->putUIBits($this->Ah, 4);
             $bit->putUIBits($this->Al, 4);
+            // TODO: data escape check
             $bit->putData($this->huffmanData);
             break;
         case 0xDD: // DRI
@@ -568,6 +612,7 @@ class IO_JPEG_Chunk {
         case 0xD5: // RST5
         case 0xD6: // RST6
         case 0xD7: // RST7
+            // TODO: data escape check
             $bit->putData($this->huffmanData);
             break;
         case 0xEE: // APP14 (APPE) Adobe Color transform
