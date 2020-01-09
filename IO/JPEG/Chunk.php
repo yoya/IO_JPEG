@@ -180,7 +180,7 @@ class IO_JPEG_Chunk {
             $DQT_Pq = [];
             $DQT_Tq = [];
             $DQT_Q  = [];
-            for ($i = 0 ; $chunkDataBitin->hasNextData(64); $i++) { // XXX
+            for ($i = 0 ; $chunkDataBitin->hasNextData(1+64); $i++) {
                 $Pq = $chunkDataBitin->getUIBits(4);
                 $Tq = $chunkDataBitin->getUIBits(4);
                 $Q = [];
@@ -206,7 +206,7 @@ class IO_JPEG_Chunk {
             $DHT_Th = [];
             $DHT_L  = [];
             $DHT_V  = [];
-            for ($i = 0 ; $chunkDataBitin->hasNextData(1+16+16); $i++) { // XXX
+            for ($i = 0 ; $chunkDataBitin->hasNextData(1+16); $i++) {
                 $Tc = $chunkDataBitin->getUIBits(4);
                 $Th = $chunkDataBitin->getUIBits(4);
                 $L = [];
