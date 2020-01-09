@@ -246,7 +246,7 @@ class IO_JPEG_Chunk {
         case 0xD7: // RST7
             $this->huffmanData = $chunkDataBitin->getDataUntil(false);
             break;
-        case 0xEE: // APP13 (APPE) Adobe Color transform
+        case 0xEE: // APP14 (APPE) Adobe Color transform
             // https://www.itu.int/rec/T-REC-T.872-201206-I
             $this->ID = $chunkDataBitin->getData(5);
             $this->Version = $chunkDataBitin->getUI16BE();
@@ -398,15 +398,15 @@ class IO_JPEG_Chunk {
             $huffmanData = $this->huffmanData;
             echo "\t(Huffman Encoded Data len:)".strlen($huffmanData)."\n";
             break;
-        case 0xEE: // APP13 (APPE) Adobe Color transform
-            $APP13_id = $this->ID;
-            $APP13_version = $this->Version;
-            $APP13_flag0 = $this->Flag0;
-            $APP13_flag1 = $this->Flag1;
-            $APP13_colTr =  $this->ColorTransform;
-            $APP13_colTrStr = ["RGB or CMYK", "YCbCr", "YCCK"][$APP13_colTr];
+        case 0xEE: // APP14 (APPE) Adobe Color transform
+            $APP14_id = $this->ID;
+            $APP14_version = $this->Version;
+            $APP14_flag0 = $this->Flag0;
+            $APP14_flag1 = $this->Flag1;
+            $APP14_colTr =  $this->ColorTransform;
+            $APP14_colTrStr = ["RGB or CMYK", "YCbCr", "YCCK"][$APP14_colTr];
             printf("\tID:%d Version:%d Flag0:0x%04x Flag1:0x%04x ColorTransform:%d(%s)\n",
-                   $APP13_id, $APP13_version, $APP13_flag0, $APP13_flag1, $APP13_colTr, $APP13_colTrStr);
+                   $APP14_id, $APP14_version, $APP14_flag0, $APP14_flag1, $APP14_colTr, $APP14_colTrStr);
             break;
         }
     }
@@ -570,7 +570,7 @@ class IO_JPEG_Chunk {
         case 0xD7: // RST7
             $bit->putData($this->huffmanData);
             break;
-        case 0xEE: // APP13 (APPE) Adobe Color transform
+        case 0xEE: // APP14 (APPE) Adobe Color transform
             // https://www.itu.int/rec/T-REC-T.872-201206-I
             assert(strlen($this->ID) === 5);
             $bit->putData($this->ID , 5);
