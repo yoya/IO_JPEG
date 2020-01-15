@@ -35,8 +35,10 @@ class IO_JPEG_Chunk {
         0xDD => 'DRI',
         0xD9 => 'EOI',
         0xDC => 'DNL',   0xDE => 'DHP',  0xDF => 'EXP',
-        0xF0 => 'JPG0',  0xF1 => 'JPG1', 0xF2 => 'JPG2',  0xF3 => 'JPG3',
-        0xF4 => 'JPG4',  0xF5 => 'JPG5', 0xF6 => 'JPG6',  0xF7 => 'JPG7',
+        0xF0 => 'VER',   0xF1 => 'DTI',  0xF2 => 'DTT',   0xF3 => 'SRF',
+        0xF4 => 'SRS',   0xF5 => 'DCR',  0xF6 => 'DQS',
+        0xF7 => 'JPG0',  0xF8 => 'JPG1', 0xF9 => 'JPG2',  0xFA => 'JPG3',
+        0xFB => 'JPG4',  0xFC => 'JPG5', 0xFD => 'JPG6',
         0xF8 => 'JPG8',  0xF9 => 'JPG9', 0xFA => 'JPG10', 0xFB => 'JPG11',
         0xFC => 'JPG12', 0xFD => 'JPG13'
     );
