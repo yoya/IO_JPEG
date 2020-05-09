@@ -58,7 +58,7 @@ class IO_JPEG_Chunk {
             }
             $marker = $this->marker;
         }
-        return $this->marker_name_table{$marker};
+        return $this->marker_name_table[$marker];
     }
     function parse($bitin, $sosScan = true) {
         while ($bitin->hasNextData()) {
