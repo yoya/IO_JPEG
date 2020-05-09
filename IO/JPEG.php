@@ -1,7 +1,7 @@
 <?php
 
 /*
-  IO_JPEG class -- v3.5
+  IO_JPEG class -- v4.0
   (c) 2012/11/06 yoya@awm.jp
   ref) http://pwiki.awm.jp/~yoya/?JPEG
  */
