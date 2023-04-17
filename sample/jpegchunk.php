@@ -31,11 +31,10 @@ $catdata = '';
 
 $prev_marker = 0;
 
-
 if (isset($options['s'])) {
 	foreach ($jpeg->_jpegChunk as $idx => $chunk) {
 		$marker = $chunk->marker;
-		$marker_name = $jpeg->marker_name_table[$marker];
+		$marker_name = $chunk->marker_name_table[$marker];
         if (isset($options['c'])) {
             $filename = sprintf("%02d_%s.jpg", $idx, $marker_name);
         } else {
