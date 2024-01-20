@@ -13,9 +13,27 @@ if (is_readable('vendor/autoload.php')) {
 
 class IO_JPEG_Chunk {
     var $marker;
-    var $data;
-    var $length;
+    var $data, $length;
+    var $startOffset;
     var $_parseChunkDetailDone = false;
+    // APP0 (0xE0)
+    var $identifier, $version, $U, $Xd, $Yd, $Xt, $Yt, $RGB;
+    var $extension_code, $extension_data;
+    // SOF0 ... SOF7 (0xC0 ... 0xC7)
+    var $P, $Y, $X, $Nf, $C, $H, $V, $Tq;
+    // DQT (0xDB)
+    var $Pq, /* $Tq, */ $Q;
+    // DHT (0xC4)
+    var $Tc, $Th, $L /*, $V */;
+    // SOS (0xDA)
+    var $Ls, $Ns, $Cs, $Td, $Ta, $Ss, $Se, $Ah, $Al, $huffmanData;
+    // DRI (0xDD)
+    var $Lr, $Ri;
+    // RST
+    // $huffmanData (same to SOS)
+    // APP14 (0xEE)
+    var $ID, $Version, $Flag0, $Flag1, $ColorTransform;
+    //
     var $marker_name_table = array(
         0xD8 => 'SOI',
         0xE0 => 'APP0',  0xE1 => 'APP1',  0xE2 => 'APP2',  0xE3 => 'APP3',
