@@ -31,7 +31,8 @@ foreach ($jpeg->_jpegChunk as $idx => $chunk) {
     $marker = $chunk->marker;
     $marker_name = $chunk->get_marker_name();
     $data = $chunk->data;
-    if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA) { // SOS) { // SOI or EOI or SOS
+    if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA || // SOI or EOI or SOS
+        ((0xD0 <= $marker) && ($marker <= 0xD7)) || $marker === 0xDD) { // RSTn or DRI (data has its length)
         if ($marker === 0xDA) { // SOS
             $bit = new IO_Bit();
             $bit->input($data);

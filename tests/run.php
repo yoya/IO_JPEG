@@ -160,5 +160,21 @@ $chunk = new IO_JPEG_Chunk();
 check('marker name 0xF7', 'JPG7', $chunk->get_marker_name(0xF7));
 check('marker name 0xFD', 'JPG13', $chunk->get_marker_name(0xFD));
 
+// J10: sample tools must not add a length field to RST/DRI segments
+$in = jpeg(['dri' => 16, 'rst' => true]);
+check('jpegdelmeta RST/DRI', bin2hex($in), bin2hex(runSample('jpegdelmeta.php', $in)));
+check('jpegrepair RST/DRI', bin2hex($in), bin2hex(runSample('jpegrepair.php', $in)));
+$dir = sys_get_temp_dir().'/iojpeg_chunk_'.getmypid();
+mkdir($dir);
+$cwd = getcwd();
+chdir($dir);
+runSample('jpegchunk.php', $in, '-s -c');
+chdir($cwd);
+$files = glob("$dir/*.jpg");
+sort($files);
+check('jpegchunk -s -c RST/DRI', bin2hex($in), bin2hex(file_get_contents(end($files))));
+array_map('unlink', $files);
+rmdir($dir);
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
