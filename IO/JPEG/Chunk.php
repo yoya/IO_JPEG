@@ -423,8 +423,8 @@ class IO_JPEG_Chunk {
             $SOS_Ns = $this->Ns;
             echo "\tLs:$SOS_Ls Ns:$SOS_Ns\n";
             foreach ($this->Cs as $i => $SOS_Cs) {
-                $SOS_Td = $this->Ta[$i];
-                $SOS_Ta = $this->Td[$i];
+                $SOS_Td = $this->Td[$i];
+                $SOS_Ta = $this->Ta[$i];
                 echo "\t[i=".($i+1)."] Cs:$SOS_Cs Td:$SOS_Td Ta:$SOS_Ta\n";
             }
             $SOS_Ss = $this->Ss;

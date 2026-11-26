@@ -136,5 +136,9 @@ $dqtPos = strpos(jpeg(), "\xff\xdb");
 $expect = substr(jpeg(), 0, $dqtPos).seg(0xEE, "Adobe\x00\x64\x40\x00\x00\x00\x02").substr(jpeg(), $dqtPos);
 check('jpegcolor -a 2', bin2hex($expect), bin2hex($out));
 
+// J5: SOS detail dump must not swap Td and Ta
+$out = dumpJPEG(parseJPEG(jpeg()), ['detail' => true]);
+check('SOS dump Td/Ta', 1, substr_count($out, "Cs:1 Td:1 Ta:2"));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
