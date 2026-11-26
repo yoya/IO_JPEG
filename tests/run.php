@@ -176,5 +176,19 @@ check('jpegchunk -s -c RST/DRI', bin2hex($in), bin2hex(file_get_contents(end($fi
 array_map('unlink', $files);
 rmdir($dir);
 
+// J11: jpegcat.php must run on PHP 8 (no curly-brace string offset)
+$parts = ["\xff\xd8", seg(0xFE, "cat"), "\xff\xd9"];
+$files = [];
+foreach ($parts as $part) {
+    $file = tempnam(sys_get_temp_dir(), 'iojpeg');
+    file_put_contents($file, $part);
+    $files []= $file;
+}
+$cmd = escapeshellarg(PHP_BINARY).' -d include_path='.escapeshellarg(get_include_path()).
+     ' '.escapeshellarg($root.'/sample/jpegcat.php').' '.join(' ', array_map('escapeshellarg', $files)).' 2>/dev/null';
+$out = (string) shell_exec($cmd);
+array_map('unlink', $files);
+check('jpegcat', bin2hex(join('', $parts)), bin2hex($out));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);

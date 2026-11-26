@@ -17,7 +17,7 @@ if ($argc < 2) {
 
 foreach (array_slice($argv, 1) as $chunkfile) {
     $chunk = file_get_contents($chunkfile);
-    $marker = ord($chunk{1});
+    $marker = ord($chunk[1]);
     if (($marker ===  0xD8) || // SOI (Start of Image)
         ($marker ===  0xD9)) { // EOI (End of Image)
         echo $chunk;
