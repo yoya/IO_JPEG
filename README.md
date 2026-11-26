@@ -53,7 +53,7 @@ DQT: length=67
 	Q[k=0x00]:02 02 02 02 02 02 03 02
 	Q[k=0x08]:02 03 05 03 03 03 05 06
 (omit)
-DRI: length=(null)
+DRI: length=4
 	Lr:4 Ri:40
 SOS: length=(null)
 	Ls:12 Ns:3
@@ -152,7 +152,8 @@ file_put_contents('output.jpg', ob_get_clean());
 
 - `parse($jpegdata, $eoiFinish = true, $sosScan = true)`: `$eoiFinish` なら EOI で読むのを止める。
   `$sosScan` なら SOS 以降の圧縮データを RST0〜7 ごとに別のセグメントにする。偽なら SOS から末尾 (EOI の手前) までを 1 つにする。
-- `data` は長さフィールドを除いた中身。SOS・RSTn・DRI は長さを持たないものとして扱い、次のマーカーの手前までを `data` にする。
+- `data` は長さフィールドを除いた中身。SOS・RSTn は長さを持たないものとして扱い、次のマーカーの手前までを `data` にする。
+- マーカーの前の埋め草 (0xFF の繰り返し) は、その数を `fillLength` に持ち、build で書き戻す。dump では `fill=N` と出る。
 - 遅延解釈: `_parseChunkDetail()` で、APP0 (JFIF)、APP14 (Adobe)、SOF0〜7、DHT、DQT、SOS、DRI の中身をプロパティ (`X`, `Y`, `Nf`, `C`, `Q` など) に展開する。
   `dump(['detail' => true])` はこれを使う。
 - build: `data` が残っていればそのまま書く。`data` を `null` にしたセグメントだけ、プロパティから中身を作り直す。
@@ -175,8 +176,7 @@ file_put_contents('output.jpg', ob_get_clean());
 # 既知の制限
 
 - `build()` は結果を返さずに echo する。
-- DRI を長さ付きのセグメントとして読まないので、`Ri` の下位バイトが 0xFF だと正しく読めない。
-- マーカーの前の埋め草 (`FF FF ... FF xx`) を受け付けない。
+- `jpegdelmeta.php`・`jpegchunk.php -s`・`jpegrepair.php` は、マーカーの前の埋め草を書き出さない。
 - SOF9〜15 (算術符号) は中身を解釈しない (バイト列のままなら読み書きできる)。
 - 同じオブジェクトで `parse()` を 2 回呼ぶと、セグメントの配列が後ろに足される。
 

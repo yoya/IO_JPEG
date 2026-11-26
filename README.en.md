@@ -53,7 +53,7 @@ DQT: length=67
 	Q[k=0x00]:02 02 02 02 02 02 03 02
 	Q[k=0x08]:02 03 05 03 03 03 05 06
 (omit)
-DRI: length=(null)
+DRI: length=4
 	Lr:4 Ri:40
 SOS: length=(null)
 	Ls:12 Ns:3
@@ -152,7 +152,8 @@ file_put_contents('output.jpg', ob_get_clean());
 
 - `parse($jpegdata, $eoiFinish = true, $sosScan = true)`: with `$eoiFinish` it stops at EOI.
   With `$sosScan` the compressed data after SOS is split into separate segments at each RST0-7. Otherwise everything from SOS to the end (before EOI) is one segment.
-- `data` is the content without the length field. SOS, RSTn and DRI are treated as having no length field, and `data` runs up to the next marker.
+- `data` is the content without the length field. SOS and RSTn are treated as having no length field, and `data` runs up to the next marker.
+- Fill bytes before a marker (repeated 0xFF) are counted in `fillLength` and written back by build. dump shows them as `fill=N`.
 - Lazy decoding: `_parseChunkDetail()` expands the content of APP0 (JFIF), APP14 (Adobe), SOF0-7, DHT, DQT, SOS and DRI into properties (`X`, `Y`, `Nf`, `C`, `Q`, ...).
   `dump(['detail' => true])` uses it.
 - build: a segment that still has `data` is written as is. Only segments whose `data` is set to `null` are rebuilt from their properties.
@@ -175,8 +176,7 @@ file_put_contents('output.jpg', ob_get_clean());
 # Known limitations
 
 - `build()` echoes the result instead of returning it.
-- DRI is not read as a length-prefixed segment, so it is misread when the low byte of `Ri` is 0xFF.
-- Fill bytes before a marker (`FF FF ... FF xx`) are not accepted.
+- `jpegdelmeta.php`, `jpegchunk.php -s` and `jpegrepair.php` do not write the fill bytes before markers.
 - The content of SOF9-15 (arithmetic coding) is not decoded (they can be read and written as bytes).
 - Calling `parse()` twice on the same object appends to the segment array.
 
