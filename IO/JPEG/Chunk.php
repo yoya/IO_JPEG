@@ -460,7 +460,7 @@ class IO_JPEG_Chunk {
             $APP14_flag1 = $this->Flag1;
             $APP14_colTr =  $this->ColorTransform;
             $APP14_colTrStr = ["RGB or CMYK", "YCbCr", "YCCK"][$APP14_colTr];
-            printf("\tID:%d Version:%d Flag0:0x%04x Flag1:0x%04x ColorTransform:%d(%s)\n",
+            printf("\tID:%s Version:%d Flag0:0x%04x Flag1:0x%04x ColorTransform:%d(%s)\n",
                    $APP14_id, $APP14_version, $APP14_flag0, $APP14_flag1, $APP14_colTr, $APP14_colTrStr);
             break;
         }

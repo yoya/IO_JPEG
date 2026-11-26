@@ -140,5 +140,9 @@ check('jpegcolor -a 2', bin2hex($expect), bin2hex($out));
 $out = dumpJPEG(parseJPEG(jpeg()), ['detail' => true]);
 check('SOS dump Td/Ta', 1, substr_count($out, "Cs:1 Td:1 Ta:2"));
 
+// J6: APP14 detail dump must print the identifier string
+$out = dumpJPEG(parseJPEG(jpeg(['adobe' => true])), ['detail' => true]);
+check('APP14 dump ID', 1, substr_count($out, "ID:Adobe Version:100"));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
