@@ -44,14 +44,14 @@ class IO_JPEG_Editor extends IO_JPEG {
             if ($before) {
                 if ($c->marker === $beforeChunk) {
                     if (is_null($afterChunk)) {
-                        array_splice($this->_jpegChunk, $idx + 1, 0, $chunk);
+                        array_splice($this->_jpegChunk, $idx + 1, 0, [$chunk]);
                         return true;
                     }
                     $before = true;
                 }
             } else {
                 if ($c->marker === $afterChunk) {
-                        array_splice($this->_jpegChunk, $idx, 0, $chunk);
+                        array_splice($this->_jpegChunk, $idx, 0, [$chunk]);
                         return true;
                 }
             }

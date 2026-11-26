@@ -83,5 +83,24 @@ $jpeg = parseJPEG($in, 'IO_JPEG_Editor');
 $jpeg->rebuild();
 check('rebuild keeps COM/APP1', bin2hex($in), bin2hex(buildJPEG($jpeg)));
 
+function comChunk($text) {
+    $chunk = new IO_JPEG_Chunk();
+    $chunk->marker = 0xFE;
+    $chunk->data = $text;
+    return $chunk;
+}
+
+// J2: updateOrAppendChunkBetween() must insert the chunk object itself
+$jpeg = parseJPEG(jpeg(), 'IO_JPEG_Editor');
+check('insert after SOI returns', true,
+      $jpeg->updateOrAppendChunkBetween(comChunk("A"), 0xD8, null));
+check('insert after SOI position', 0xFE, $jpeg->_jpegChunk[1]->marker);
+$jpeg = parseJPEG(jpeg(), 'IO_JPEG_Editor');
+$jpeg->updateOrAppendChunkBetween(comChunk("B"), null, 0xDB);
+$out = buildJPEG($jpeg);
+$dqtPos = strpos(jpeg(), "\xff\xdb");
+$expect = substr(jpeg(), 0, $dqtPos).seg(0xFE, "B").substr(jpeg(), $dqtPos);
+check('insert before DQT build', bin2hex($expect), bin2hex($out));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
