@@ -64,5 +64,6 @@ class IO_JPEG_Editor extends IO_JPEG {
                 unset($this->_jpegChunk[$idx]);
             }
         }
+        $this->_jpegChunk = array_values($this->_jpegChunk);
     }
 }

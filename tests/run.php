@@ -110,5 +110,13 @@ $dqtPos = strpos(jpeg(), "\xff\xdb");
 $expect = substr(jpeg(), 0, $dqtPos).seg(0xFE, "C").substr(jpeg(), $dqtPos);
 check('insert between SOI and DQT build', bin2hex($expect), bin2hex(buildJPEG($jpeg)));
 
+// J3: removeChunk() must not leave holes that shift later inserts
+$jpeg = parseJPEG(jpeg(['com' => true]), 'IO_JPEG_Editor');
+$jpeg->removeChunk(0xFE);
+$jpeg->updateOrAppendChunkBetween(comChunk("D"), null, 0xDB);
+$dqtPos = strpos(jpeg(), "\xff\xdb");
+$expect = substr(jpeg(), 0, $dqtPos).seg(0xFE, "D").substr(jpeg(), $dqtPos);
+check('insert after removeChunk build', bin2hex($expect), bin2hex(buildJPEG($jpeg)));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
