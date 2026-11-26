@@ -155,5 +155,10 @@ $in = substr($in, 0, 2).seg(0xB0, "abc").substr($in, 2);
 $out = dumpJPEG(parseJPEG($in), []);
 check('unknown marker dump name', 1, substr_count($out, "\n0xB0: length=5\n"));
 
+// J9: JPGn markers are F0..FD, so F7 is JPG7
+$chunk = new IO_JPEG_Chunk();
+check('marker name 0xF7', 'JPG7', $chunk->get_marker_name(0xF7));
+check('marker name 0xFD', 'JPG13', $chunk->get_marker_name(0xFD));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
