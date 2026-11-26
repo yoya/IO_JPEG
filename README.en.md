@@ -176,7 +176,6 @@ file_put_contents('output.jpg', ob_get_clean());
 # Known limitations
 
 - `build()` echoes the result instead of returning it.
-- `jpegdelmeta.php`, `jpegchunk.php -s` and `jpegrepair.php` do not write the fill bytes before markers.
 - The content of SOF9-15 (arithmetic coding) is not decoded (they can be read and written as bytes).
 - Calling `parse()` twice on the same object appends to the segment array.
 

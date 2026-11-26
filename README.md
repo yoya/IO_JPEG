@@ -176,7 +176,6 @@ file_put_contents('output.jpg', ob_get_clean());
 # 既知の制限
 
 - `build()` は結果を返さずに echo する。
-- `jpegdelmeta.php`・`jpegchunk.php -s`・`jpegrepair.php` は、マーカーの前の埋め草を書き出さない。
 - SOF9〜15 (算術符号) は中身を解釈しない (バイト列のままなら読み書きできる)。
 - 同じオブジェクトで `parse()` を 2 回呼ぶと、セグメントの配列が後ろに足される。
 
