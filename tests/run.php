@@ -176,6 +176,25 @@ check('jpegchunk -s -c RST/DRI', bin2hex($in), bin2hex(file_get_contents(end($fi
 array_map('unlink', $files);
 rmdir($dir);
 
+// J8: DRI is a length-prefixed segment (Ri = 0x00FF looked like a marker)
+$in = jpeg(['dri' => 0x00FF, 'rst' => true]);
+$jpeg = parseJPEG($in);
+$markers = [];
+foreach ($jpeg->_jpegChunk as $chunk) {
+    $markers []= $chunk->marker;
+}
+check('DRI Ri=0x00FF chunks', [0xD8, 0xE0, 0xDB, 0xC0, 0xC4, 0xDD, 0xDA, 0xD0, 0xD9], $markers);
+$dri = $jpeg->_jpegChunk[5];
+check('DRI data/length', ["\x00\xff", 4], [$dri->data, $dri->length]);
+$dri->_parseChunkDetail();
+check('DRI Lr/Ri', [4, 255], [$dri->Lr, $dri->Ri]);
+check('DRI build', bin2hex($in), bin2hex(buildJPEG($jpeg)));
+$jpeg = parseJPEG($in, 'IO_JPEG_Editor');
+$jpeg->rebuild();
+check('DRI rebuild', bin2hex($in), bin2hex(buildJPEG($jpeg)));
+check('DRI dump', 1, substr_count(dumpJPEG(parseJPEG($in), []), "\nDRI: length=4\n"));
+check('jpegdelmeta DRI Ri=0x00FF', bin2hex($in), bin2hex(runSample('jpegdelmeta.php', $in)));
+
 // J11: jpegcat.php must run on PHP 8 (no curly-brace string offset)
 $parts = ["\xff\xd8", seg(0xFE, "cat"), "\xff\xd9"];
 $files = [];

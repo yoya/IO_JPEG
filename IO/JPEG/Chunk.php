@@ -114,7 +114,6 @@ class IO_JPEG_Chunk {
             }
         case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
-        case 0xDD: // DRI
             list($chunk_data_offset, $dummy) = $bitin->getOffset();
             while (true) {
                 $next_marker1 = $bitin->getUI8();
@@ -277,7 +276,7 @@ class IO_JPEG_Chunk {
             $this->huffmanData = $chunkDataBitin->getDataUntil(false);
             break;
         case 0xDD: // DRI
-            $this->Lr = $chunkDataBitin->getUI16BE();
+            $this->Lr = $this->length;
             $this->Ri = $chunkDataBitin->getUI16BE();
             break;
         case 0xD0: // RST0
@@ -482,7 +481,6 @@ class IO_JPEG_Chunk {
         case 0xDA: // SOS
         case 0xD0: case 0xD1: case 0xD2: case 0xD3: // RST
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RST
-        case 0xDD: // DRI
             if (is_null($this->data)) {
                 $this->_buildChunkDetail();
             }
@@ -622,8 +620,7 @@ class IO_JPEG_Chunk {
             // TODO: data escape check
             $bit->putData($this->huffmanData);
             break;
-        case 0xDD: // DRI
-            $bit->putUI16BE($this->Lr);
+        case 0xDD: // DRI (Lr is the length field)
             $bit->putUI16BE($this->Ri);
             break;
         case 0xD0: // RST0
