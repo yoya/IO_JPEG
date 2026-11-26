@@ -15,6 +15,7 @@ class IO_JPEG_Chunk {
     var $marker;
     var $data, $length;
     var $startOffset;
+    var $fillLength = 0; // number of fill bytes (0xFF) before the marker
     var $_parseChunkDetailDone = false;
     // APP0 (0xE0)
     var $identifier, $version, $U, $Xd, $Yd, $Xt, $Yt, $RGB;
@@ -93,7 +94,15 @@ class IO_JPEG_Chunk {
             return ;
         }
         $this->startOffset = $offset;
+        $this->fillLength = 0;
         $marker2 = $bitin->getUI8();
+        while ($marker2 === 0xFF) { // fill bytes
+            if (! $bitin->hasNextData()) {
+                return ;
+            }
+            $this->fillLength++;
+            $marker2 = $bitin->getUI8();
+        }
         $this->marker = $marker2;
         $this->data = null;
         $this->length = null;
@@ -306,14 +315,15 @@ class IO_JPEG_Chunk {
         }
         $marker = $this->marker;
         $marker_name = $this->get_marker_name($marker);
+        $fill = ($this->fillLength > 0) ? " fill={$this->fillLength}" : "";
         if (is_null($this->data)) {
-            echo "$marker_name:".PHP_EOL;
+            echo "$marker_name:$fill".PHP_EOL;
         } else {
             if (is_null($this->length)) {
-                echo "$marker_name: length=(null)".PHP_EOL;
+                echo "$marker_name: length=(null)$fill".PHP_EOL;
             } else {
                 $length = $this->length;
-                echo "$marker_name: length=$length".PHP_EOL;
+                echo "$marker_name: length=$length$fill".PHP_EOL;
             }
         }
         if ($opts['detail']) {
@@ -322,14 +332,14 @@ class IO_JPEG_Chunk {
         }
         if ($opts['hexdump']) {
             if (is_null($this->data)) {
-                $bitin->hexdump($this->startOffset, 2);
+                $bitin->hexdump($this->startOffset, 2 + $this->fillLength);
             } else {
                 if (is_null($this->length)) {
                     $length = strlen($this->data);
                 } else {
                     $length = $this->length;
                 }
-                $bitin->hexdump($this->startOffset, 2 + $length);
+                $bitin->hexdump($this->startOffset, 2 + $this->fillLength + $length);
             }
         }
     }
@@ -468,6 +478,7 @@ class IO_JPEG_Chunk {
     }
     function build($bit) {
         $bit->putUI8(0xFF);
+        $bit->putData(str_repeat("\xFF", $this->fillLength));
         assert(isset($this->marker));
         $marker = $this->marker;
         $bit->putUI8($marker);

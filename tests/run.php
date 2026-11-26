@@ -195,6 +195,24 @@ check('DRI rebuild', bin2hex($in), bin2hex(buildJPEG($jpeg)));
 check('DRI dump', 1, substr_count(dumpJPEG(parseJPEG($in), []), "\nDRI: length=4\n"));
 check('jpegdelmeta DRI Ri=0x00FF', bin2hex($in), bin2hex(runSample('jpegdelmeta.php', $in)));
 
+// J9: fill bytes (FF ...) before a marker are accepted and kept
+$in = jpeg(['rst' => true]);
+$in = str_replace(["\xff\xdb", "\xff\xd0", "\xff\xd9"], ["\xff\xff\xff\xdb", "\xff\xff\xd0", "\xff\xff\xff\xff\xd9"], $in);
+$jpeg = parseJPEG($in);
+$fills = [];
+foreach ($jpeg->_jpegChunk as $chunk) {
+    $fills[$chunk->get_marker_name()] = $chunk->fillLength;
+}
+check('fill bytes chunks', ['SOI' => 0, 'APP0' => 0, 'DQT' => 2, 'SOF0' => 0, 'DHT' => 0, 'SOS' => 0, 'RST0' => 1, 'EOI' => 3], $fills);
+check('fill bytes SOS data', "\x00\x08\x01\x01\x12\x00\x3f\x00\x12\x34\xff\x00\x56", $jpeg->_jpegChunk[5]->data);
+check('fill bytes build', bin2hex($in), bin2hex(buildJPEG($jpeg)));
+$out = dumpJPEG($jpeg, ['hexdump' => true]);
+check('fill bytes dump', 1, substr_count($out, "\nDQT: length=67 fill=2\n"));
+preg_match('/^EOI: fill=3\n.*\n(.*)\n/m', $out, $m);
+check('fill bytes hexdump', 'ff ff ff ff d9', isset($m[1]) ? trim(substr($m[1], 10, 50)) : null);
+$chunk = new IO_JPEG_Chunk();
+check('new chunk fillLength', 0, $chunk->fillLength);
+
 // J11: jpegcat.php must run on PHP 8 (no curly-brace string offset)
 $parts = ["\xff\xd8", seg(0xFE, "cat"), "\xff\xd9"];
 $files = [];
