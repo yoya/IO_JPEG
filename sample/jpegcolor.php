@@ -126,7 +126,7 @@ if ((! $jfifMarker_add) && (! $jfifMarker_del) && is_null($adobeMarker_colorTran
     if (! is_null($adobeMarker_colorTransform)) {
         $adobeMarkerChunk = new IO_JPEG_Chunk();
         $adobeMarkerChunk->marker = 0xEE;  // APP14 (adobe marker)
-        $adobeMarkerChunk->ID = 0;
+        $adobeMarkerChunk->ID = "Adobe";
         $adobeMarkerChunk->Version = 100;
         $adobeMarkerChunk->Flag0 = 0x4000;
         $adobeMarkerChunk->Flag1 = 0x0000;

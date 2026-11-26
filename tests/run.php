@@ -77,6 +77,18 @@ function dumpJPEG($jpeg, $opts) {
     return ob_get_clean();
 }
 
+// run a sample tool on $data (written to a temporary file), return stdout
+function runSample($script, $data, $args = '') {
+    global $root;
+    $file = tempnam(sys_get_temp_dir(), 'iojpeg');
+    file_put_contents($file, $data);
+    $cmd = escapeshellarg(PHP_BINARY).' -d include_path='.escapeshellarg(get_include_path()).
+         ' '.escapeshellarg($root.'/sample/'.$script).' -f '.escapeshellarg($file).' '.$args.' 2>/dev/null';
+    $out = shell_exec($cmd);
+    unlink($file);
+    return (string) $out;
+}
+
 // J1: rebuild() must keep segments that _buildChunkDetail() can not rebuild
 $in = jpeg(['com' => true, 'app1' => true]);
 $jpeg = parseJPEG($in, 'IO_JPEG_Editor');
@@ -117,6 +129,12 @@ $jpeg->updateOrAppendChunkBetween(comChunk("D"), null, 0xDB);
 $dqtPos = strpos(jpeg(), "\xff\xdb");
 $expect = substr(jpeg(), 0, $dqtPos).seg(0xFE, "D").substr(jpeg(), $dqtPos);
 check('insert after removeChunk build', bin2hex($expect), bin2hex(buildJPEG($jpeg)));
+
+// J4: jpegcolor.php -a must write an "Adobe" APP14 marker
+$out = runSample('jpegcolor.php', jpeg(), '-a 2');
+$dqtPos = strpos(jpeg(), "\xff\xdb");
+$expect = substr(jpeg(), 0, $dqtPos).seg(0xEE, "Adobe\x00\x64\x40\x00\x00\x00\x02").substr(jpeg(), $dqtPos);
+check('jpegcolor -a 2', bin2hex($expect), bin2hex($out));
 
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
