@@ -144,5 +144,10 @@ check('SOS dump Td/Ta', 1, substr_count($out, "Cs:1 Td:1 Ta:2"));
 $out = dumpJPEG(parseJPEG(jpeg(['adobe' => true])), ['detail' => true]);
 check('APP14 dump ID', 1, substr_count($out, "ID:Adobe Version:100"));
 
+// J7: hexdump of a chunk without length field must not spill into the next one
+$out = dumpJPEG(parseJPEG("\xff\xd8\xff\xd0\x78\x9a\xff\xd9"), ['hexdump' => true]);
+preg_match('/^RST0:.*\n.*\n(.*)\n/m', $out, $m);
+check('RST hexdump bytes', 'ff d0 78 9a', isset($m[1]) ? trim(substr($m[1], 10, 50)) : null);
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);

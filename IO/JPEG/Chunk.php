@@ -324,7 +324,7 @@ class IO_JPEG_Chunk {
                 $bitin->hexdump($this->startOffset, 2);
             } else {
                 if (is_null($this->length)) {
-                    $length = 2 + strlen($this->data);
+                    $length = strlen($this->data);
                 } else {
                     $length = $this->length;
                 }
