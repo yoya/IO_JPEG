@@ -149,5 +149,11 @@ $out = dumpJPEG(parseJPEG("\xff\xd8\xff\xd0\x78\x9a\xff\xd9"), ['hexdump' => tru
 preg_match('/^RST0:.*\n.*\n(.*)\n/m', $out, $m);
 check('RST hexdump bytes', 'ff d0 78 9a', isset($m[1]) ? trim(substr($m[1], 10, 50)) : null);
 
+// J9: unknown marker gets a hex name instead of an undefined-key warning
+$in = jpeg();
+$in = substr($in, 0, 2).seg(0xB0, "abc").substr($in, 2);
+$out = dumpJPEG(parseJPEG($in), []);
+check('unknown marker dump name', 1, substr_count($out, "\n0xB0: length=5\n"));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
