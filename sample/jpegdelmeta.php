@@ -49,10 +49,10 @@ foreach ($jpeg->_jpegChunk as $idx => $chunk) {
 	$data = $chunk->data;
 	if (($marker === 0xD8) || ($marker === 0xD9) || $marker === 0xDA || // SOI or EOI or SOS
 	    ((0xD0 <= $marker) && ($marker <= 0xD7))) { // RSTn
-		$data = pack("CC", 0xff, $marker) . $data;
+		$data = "\xff".str_repeat("\xff", $chunk->fillLength).chr($marker) . $data;
 	} else {
 		$length = 2 + strlen($chunk->data);
-		$data = pack("CC", 0xff, $marker) . pack("n", $length) . $data;
+		$data = "\xff".str_repeat("\xff", $chunk->fillLength).chr($marker) . pack("n", $length) . $data;
 	}
 	$output_data_list []= $data;
 }

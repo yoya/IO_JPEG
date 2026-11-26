@@ -49,10 +49,10 @@ foreach ($jpeg->_jpegChunk as $idx => $chunk) {
                 $prev = $c;
             }
         }
-        $data = pack("CC", 0xff, $marker) . $data;
+        $data = "\xff".str_repeat("\xff", $chunk->fillLength).chr($marker) . $data;
     } else {
         $length = 2 + strlen($chunk->data);
-        $data = pack("CC", 0xff, $marker) . pack("n", $length) . $data;
+        $data = "\xff".str_repeat("\xff", $chunk->fillLength).chr($marker) . pack("n", $length) . $data;
     }
     $catdata .= $data;
     $prev_marker = $marker;

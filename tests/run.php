@@ -227,5 +227,30 @@ $out = (string) shell_exec($cmd);
 array_map('unlink', $files);
 check('jpegcat', bin2hex(join('', $parts)), bin2hex($out));
 
+// sample tools keep fill bytes before markers
+$in = jpeg(['dri' => 16, 'rst' => true]);
+$in = str_replace(["\xff\xdb", "\xff\xdd", "\xff\xd0", "\xff\xd9"], ["\xff\xff\xff\xdb", "\xff\xff\xdd", "\xff\xff\xd0", "\xff\xff\xff\xd9"], $in);
+check('jpegdelmeta fill bytes', bin2hex($in), bin2hex(runSample('jpegdelmeta.php', $in)));
+check('jpegrepair fill bytes', bin2hex($in), bin2hex(runSample('jpegrepair.php', $in)));
+foreach (['-s -c' => 'jpg', '-s' => 'jc'] as $args => $ext) {
+    $dir = sys_get_temp_dir().'/iojpeg_chunk_'.getmypid();
+    mkdir($dir);
+    $cwd = getcwd();
+    chdir($dir);
+    runSample('jpegchunk.php', $in, $args);
+    chdir($cwd);
+    $files = glob("$dir/*.$ext");
+    sort($files);
+    if ($ext === 'jpg') {
+        check('jpegchunk -s -c fill bytes', bin2hex($in), bin2hex(file_get_contents(end($files))));
+    } else {
+        $cmd = escapeshellarg(PHP_BINARY).' -d include_path='.escapeshellarg(get_include_path()).
+             ' '.escapeshellarg($root.'/sample/jpegcat.php').' '.join(' ', array_map('escapeshellarg', $files)).' 2>/dev/null';
+        check('jpegchunk -s + jpegcat fill bytes', bin2hex($in), bin2hex((string) shell_exec($cmd)));
+    }
+    array_map('unlink', $files);
+    rmdir($dir);
+}
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
