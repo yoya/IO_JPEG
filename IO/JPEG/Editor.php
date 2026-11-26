@@ -14,9 +14,16 @@ if (is_readable('vendor/autoload.php')) {
 
 class IO_JPEG_Editor extends IO_JPEG {
     function rebuild() {
+        // markers that _buildChunkDetail() can rebuild (others keep data)
+        $rebuildable = [0xE0, 0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+                        0xDB, 0xC4, 0xDA, 0xDD,
+                        0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7,
+                        0xEE];
         foreach ($this->_jpegChunk as &$chunk) {
-            $chunk->_parseChunkDetail();
-            $chunk->data = null;
+            if (in_array($chunk->marker, $rebuildable, true)) {
+                $chunk->_parseChunkDetail();
+                $chunk->data = null;
+            }
         }
     }
     function updateOrAppendChunkBetween($chunk, $beforeChunk, $afterChunk) {
