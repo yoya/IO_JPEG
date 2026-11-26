@@ -47,7 +47,7 @@ class IO_JPEG_Editor extends IO_JPEG {
                         array_splice($this->_jpegChunk, $idx + 1, 0, [$chunk]);
                         return true;
                     }
-                    $before = true;
+                    $before = false;
                 }
             } else {
                 if ($c->marker === $afterChunk) {

@@ -102,5 +102,13 @@ $dqtPos = strpos(jpeg(), "\xff\xdb");
 $expect = substr(jpeg(), 0, $dqtPos).seg(0xFE, "B").substr(jpeg(), $dqtPos);
 check('insert before DQT build', bin2hex($expect), bin2hex($out));
 
+// J3: with both anchors, insert after the first and before the second
+$jpeg = parseJPEG(jpeg(), 'IO_JPEG_Editor');
+check('insert between SOI and DQT returns', true,
+      $jpeg->updateOrAppendChunkBetween(comChunk("C"), 0xD8, 0xDB));
+$dqtPos = strpos(jpeg(), "\xff\xdb");
+$expect = substr(jpeg(), 0, $dqtPos).seg(0xFE, "C").substr(jpeg(), $dqtPos);
+check('insert between SOI and DQT build', bin2hex($expect), bin2hex(buildJPEG($jpeg)));
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
