@@ -191,3 +191,9 @@ file_put_contents('output.jpg', ob_get_clean());
 - ITU-T T.84 (JPEG extensions, Table B.1 Marker code assignments): https://www.itu.int/rec/T-REC-T.84-199607-I/en
 - ITU-T T.872 (APP14 Adobe marker): https://www.itu.int/rec/T-REC-T.872-201206-I
 - http://pwiki.awm.jp/~yoya/?JPEG
+
+## IO_Bit の利用箇所
+
+マーカーをバイト単位で走査し、セグメントの長さは `getUI16BE()` で読み取ります。
+
+[IO_Bit Wiki](https://github.com/yoya/IO_Bit/wiki)
