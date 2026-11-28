@@ -252,5 +252,304 @@ foreach (['-s -c' => 'jpg', '-s' => 'jc'] as $args => $ext) {
     rmdir($dir);
 }
 
+/*
+ * test data (tests/data/make.php)
+ */
+function checkThrows($name, $func) {
+    global $failed, $passed;
+    try {
+        $func();
+    } catch (Exception $e) {
+        $passed++;
+        return;
+    }
+    $failed++;
+    echo "FAIL: $name (exception not thrown)".PHP_EOL;
+}
+
+// run a php script in a child process (same include_path, E_ALL), killed after $timeout seconds
+function runPHP($args, $cwd = null, $timeout = 10) {
+    $cmd = escapeshellarg(PHP_BINARY).' -d include_path='.escapeshellarg(get_include_path()).
+         ' -d error_reporting=-1 -d display_errors=stderr '.join(' ', array_map('escapeshellarg', $args));
+    $proc = proc_open($cmd, array(0 => array('file', '/dev/null', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, $cwd);
+    stream_set_blocking($pipes[1], false);
+    stream_set_blocking($pipes[2], false);
+    $out = $err = '';
+    $deadline = microtime(true) + $timeout;
+    while (true) {
+        $out .= stream_get_contents($pipes[1]);
+        $err .= stream_get_contents($pipes[2]);
+        $st = proc_get_status($proc);
+        if (! $st['running']) {
+            break;
+        }
+        if (microtime(true) > $deadline) {
+            proc_terminate($proc, 9);
+            $err .= 'TIMEOUT';
+            break;
+        }
+        usleep(10000);
+    }
+    $out .= stream_get_contents($pipes[1]);
+    $err .= stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    proc_close($proc);
+    return array($st['running'] ? -1 : $st['exitcode'], $out, $err);
+}
+
+$dataDir = $root.'/tests/data';
+function dataFile($name) {
+    global $dataDir;
+    return file_get_contents($dataDir.'/'.$name);
+}
+function comChunk2($marker, $data) {
+    $chunk = new IO_JPEG_Chunk();
+    $chunk->marker = $marker;
+    $chunk->data = $data;
+    return $chunk;
+}
+function markers($jpeg) {
+    return array_map(function ($c) { return $c->get_marker_name(); }, $jpeg->_jpegChunk);
+}
+function chunkOf($jpeg, $name, $nth = 0) {
+    foreach ($jpeg->_jpegChunk as $c) {
+        if ($c->get_marker_name() === $name && $nth-- === 0) {
+            $c->_parseChunkDetail();
+            return $c;
+        }
+    }
+    return null;
+}
+// remove the length-prefixed segment with $marker from $data
+function withoutSeg($data, $marker) {
+    $pos = strpos($data, "\xff".chr($marker));
+    $len = unpack('n', substr($data, $pos + 2, 2))[1];
+    return substr($data, 0, $pos).substr($data, $pos + 2 + $len);
+}
+// call $func and collect PHP warnings / notices it raises (output is discarded)
+function errorsOf($func) {
+    $errors = array();
+    set_error_handler(function ($no, $str) use (&$errors) { $errors []= $str; return true; });
+    ob_start();
+    try {
+        $func();
+    } finally {
+        ob_end_clean();
+        restore_error_handler();
+    }
+    return $errors;
+}
+$tmpDir = sys_get_temp_dir().'/io_jpeg_test_'.getmypid();
+mkdir($tmpDir);
+function cleanTmp() {
+    global $tmpDir;
+    foreach (glob("$tmpDir/*") as $f) {
+        unlink($f);
+    }
+}
+
+// make.php regenerates the committed files byte-identically
+$dataNames = array('baseline.jpg', 'restart.jpg', 'progressive.jpg', 'cmyk.jpg', 'trailing.jpg', 'truncated.jpg', 'truncated_seg.jpg');
+list($status, $out, $err) = runPHP(array($dataDir.'/make.php', $tmpDir));
+check('make.php status', array(0, ''), array($status, $err));
+foreach ($dataNames as $name) {
+    check("make.php $name", md5(dataFile($name)), md5((string) @file_get_contents("$tmpDir/$name")));
+}
+cleanTmp();
+$good = array('baseline.jpg', 'restart.jpg', 'progressive.jpg', 'cmyk.jpg');
+
+// baseline.jpg
+$data = dataFile('baseline.jpg');
+$jpeg = parseJPEG($data);
+check('baseline markers', array('SOI', 'APP0', 'COM', 'DQT', 'SOF0', 'DHT', 'SOS', 'EOI'), markers($jpeg));
+$c = chunkOf($jpeg, 'APP0');
+check('baseline APP0 segment', array(2, 22), array($c->startOffset, $c->length));
+check('baseline APP0 JFIF', array("JFIF\0", '1.02', 1, 72, 72, 2, 1, "\xff\x00\x00\x00\xff\x00"),
+      array($c->identifier, $c->version, $c->U, $c->Xd, $c->Yd, $c->Xt, $c->Yt, $c->RGB));
+check('baseline COM', array(22, 'synthetic test image'), array(chunkOf($jpeg, 'COM')->length, chunkOf($jpeg, 'COM')->data));
+$c = chunkOf($jpeg, 'DQT');
+check('baseline DQT', array(132, array(0, 0), array(0, 1), range(1, 64), range(2, 65)), array($c->length, $c->Pq, $c->Tq, $c->Q[0], $c->Q[1]));
+$c = chunkOf($jpeg, 'SOF0');
+check('baseline SOF0', array(17, 8, 16, 16, 3, array(1, 2, 3), array(2, 1, 1), array(2, 1, 1), array(0, 1, 1)),
+      array($c->length, $c->P, $c->Y, $c->X, $c->Nf, $c->C, $c->H, $c->V, $c->Tq));
+$c = chunkOf($jpeg, 'DHT');
+check('baseline DHT classes', array(array(0, 1, 0, 1), array(0, 0, 1, 1)), array($c->Tc, $c->Th));
+check('baseline DHT L', array(array(0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0), array(0, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
+      array($c->L[0], $c->L[1]));
+check('baseline DHT V', array(array(1 => array(0x00), 2 => array(0x07, 0x0e, 0x15, 0x1c, 0x23)), array(0x10, 0x17)),
+      array(array_slice($c->V[0], 0, 2, true), $c->V[1][1]));
+check('baseline DHT AC1 162 codes', array(162, 119), array(array_sum($c->L[3]), count($c->V[3][15])));
+$c = chunkOf($jpeg, 'SOS');
+$sosPos = strpos($data, "\xff\xda");
+check('baseline SOS header', array(null, 12, 3, array(1, 2, 3), array(0, 1, 1), array(0, 1, 1), 0, 63, 0, 0),
+      array($c->length, $c->Ls, $c->Ns, $c->Cs, $c->Td, $c->Ta, $c->Ss, $c->Se, $c->Ah, $c->Al));
+check('baseline SOS entropy data', array(43, substr($data, $sosPos + 2 + 12, -2)), array(strlen($c->huffmanData), $c->huffmanData));
+check('baseline SOS data', substr($data, $sosPos + 2, -2), $c->data);
+check('baseline EOI', array(null, 0, strlen($data) - 2), array(chunkOf($jpeg, 'EOI')->data, chunkOf($jpeg, 'EOI')->fillLength, chunkOf($jpeg, 'EOI')->startOffset));
+
+// restart.jpg: APP1 Exif, APP2 ICC, APP14, 16-bit DQT, SOF1, DRI, RST0..7 + RST0, fill bytes
+$data = dataFile('restart.jpg');
+$jpeg = parseJPEG($data);
+check('restart markers', array('SOI', 'APP1', 'APP2', 'APP14', 'DQT', 'SOF1', 'DHT', 'DRI', 'SOS',
+                               'RST0', 'RST1', 'RST2', 'RST3', 'RST4', 'RST5', 'RST6', 'RST7', 'RST0', 'EOI'), markers($jpeg));
+check('restart APP1 Exif', array(34, "Exif\0\0MM\0\x2a\0\0\0\x08"), array(chunkOf($jpeg, 'APP1')->length, substr(chunkOf($jpeg, 'APP1')->data, 0, 14)));
+$c = chunkOf($jpeg, 'APP2');
+check('restart APP2 ICC', array(144, "ICC_PROFILE\0\x01\x01", 128, 'acsp'),
+      array($c->length, substr($c->data, 0, 14), unpack('N', substr($c->data, 14, 4))[1], substr($c->data, 14 + 36, 4)));
+$c = chunkOf($jpeg, 'APP14');
+check('restart APP14', array('Adobe', 100, 0x8000, 0x0001, 1), array($c->ID, $c->Version, $c->Flag0, $c->Flag1, $c->ColorTransform));
+$c = chunkOf($jpeg, 'DQT');
+check('restart DQT 16-bit', array(131, array(1), array(0), 300, 6600, 64), array($c->length, $c->Pq, $c->Tq, $c->Q[0][0], $c->Q[0][63], count($c->Q[0])));
+$c = chunkOf($jpeg, 'SOF1');
+check('restart SOF1', array(12, 8, 64, 1, array(1)), array($c->P, $c->Y, $c->X, $c->Nf, $c->C));
+$c = chunkOf($jpeg, 'DRI');
+check('restart DRI', array("\x00\x01", 4, 4, 1), array($c->data, $c->length, $c->Lr, $c->Ri));
+$fills = array();
+$lens = array();
+foreach ($jpeg->_jpegChunk as $c) {
+    $fills []= $c->fillLength;
+    if (strncmp($c->get_marker_name(), 'RST', 3) === 0) {
+        $c->_parseChunkDetail();
+        $lens []= strlen($c->huffmanData);
+    }
+}
+check('restart fill bytes', array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 3), $fills);
+check('restart RST data sizes', array_fill(0, 9, 8), $lens);
+check('restart SOS entropy', 8, strlen(chunkOf($jpeg, 'SOS')->huffmanData));
+$rst3 = chunkOf($jpeg, 'RST3');
+check('restart RST3 offset', array(strpos($data, "\xff\xff\xd3"), $rst3->data), array($rst3->startOffset, substr($data, $rst3->startOffset + 3, 8)));
+
+// progressive.jpg: JFXX, SOF2, three scans, DHT between scans
+$jpeg = parseJPEG(dataFile('progressive.jpg'));
+check('progressive markers', array('SOI', 'APP0', 'DQT', 'SOF2', 'DHT', 'SOS', 'DHT', 'SOS', 'SOS', 'EOI'), markers($jpeg));
+$c = chunkOf($jpeg, 'APP0');
+check('progressive JFXX', array("JFXX\0", 0x10, "\xff\xd8\xff\xd9"), array($c->identifier, $c->extension_code, $c->extension_data));
+$scans = array();
+for ($i = 0; $i < 3; $i++) {
+    $c = chunkOf($jpeg, 'SOS', $i);
+    $scans []= array($c->Ss, $c->Se, $c->Ah, $c->Al);
+}
+check('progressive scans', array(array(0, 0, 0, 1), array(1, 63, 0, 1), array(1, 63, 1, 0)), $scans);
+check('progressive DHT 2', array(array(1), array(0)), array(chunkOf($jpeg, 'DHT', 1)->Tc, chunkOf($jpeg, 'DHT', 1)->Th));
+
+// cmyk.jpg
+$jpeg = parseJPEG(dataFile('cmyk.jpg'));
+check('cmyk markers', array('SOI', 'APP14', 'DQT', 'SOF0', 'DHT', 'SOS', 'EOI'), markers($jpeg));
+check('cmyk APP14 ColorTransform', 2, chunkOf($jpeg, 'APP14')->ColorTransform);
+check('cmyk SOF0 components', array(4, array(67, 77, 89, 75)), array(chunkOf($jpeg, 'SOF0')->Nf, chunkOf($jpeg, 'SOF0')->C));
+check('cmyk SOS components', array(4, array(67, 77, 89, 75)), array(chunkOf($jpeg, 'SOS')->Ns, chunkOf($jpeg, 'SOS')->Cs));
+
+// trailing.jpg: parse stops at EOI
+$jpeg = parseJPEG(dataFile('trailing.jpg'));
+check('trailing markers', array('SOI', 'APP0', 'COM', 'DQT', 'SOF0', 'DHT', 'SOS', 'EOI'), markers($jpeg));
+check('trailing build', bin2hex(dataFile('baseline.jpg')), bin2hex(buildJPEG($jpeg)));
+
+// build / rebuild round trips, also with sosScan = false and eoiFinish = false
+foreach ($good as $name) {
+    $data = dataFile($name);
+    check("build $name", bin2hex($data), bin2hex(buildJPEG(parseJPEG($data))));
+    $jpeg = parseJPEG($data, 'IO_JPEG_Editor');
+    $jpeg->rebuild();
+    check("rebuild $name", bin2hex($data), bin2hex(buildJPEG($jpeg)));
+    $jpeg = new IO_JPEG();
+    $jpeg->parse($data, false, false);
+    check("build $name (no SOS scan)", bin2hex($data), bin2hex(buildJPEG($jpeg)));
+    $jpeg = new IO_JPEG_Editor();
+    $jpeg->parse($data, false, false);
+    $jpeg->rebuild();
+    check("rebuild $name (no SOS scan)", bin2hex($data), bin2hex(buildJPEG($jpeg)));
+}
+$jpeg = new IO_JPEG();
+$jpeg->parse(dataFile('restart.jpg'), true, false);
+check('restart no SOS scan markers', array('SOI', 'APP1', 'APP2', 'APP14', 'DQT', 'SOF1', 'DHT', 'DRI', 'SOS', 'EOI'), markers($jpeg));
+
+// edit APIs (IO_JPEG_Editor)
+$data = dataFile('baseline.jpg');
+$jpeg = parseJPEG($data, 'IO_JPEG_Editor');
+$jpeg->removeChunk(0xFE);
+check('removeChunk COM', bin2hex(withoutSeg($data, 0xFE)), bin2hex(buildJPEG($jpeg)));
+$jpeg = parseJPEG($data, 'IO_JPEG_Editor');
+check('update COM returns', true, $jpeg->updateOrAppendChunkBetween(comChunk('new'), 0xD8, null));
+$comPos = strpos($data, "\xff\xfe");
+check('update COM build', bin2hex(substr($data, 0, $comPos).seg(0xFE, 'new').substr($data, $comPos + 24)), bin2hex(buildJPEG($jpeg)));
+check('insert anchors not found', false, $jpeg->updateOrAppendChunkBetween(comChunk2(0xEF, 'x'), 0xB0, null));
+checkThrows('insert without anchors', function () use ($jpeg) { $jpeg->updateOrAppendChunkBetween(comChunk('x'), null, null); });
+$jpeg = parseJPEG($data, 'IO_JPEG_Editor');
+$jpeg->rebuild();
+$sof = chunkOf($jpeg, 'SOF0');
+$sof->X = 0x1234;
+$sof->Y = 0x0567;
+$dqt = chunkOf($jpeg, 'DQT');
+$dqt->Q[1][63] = 0xEE;
+$app0 = chunkOf($jpeg, 'APP0');
+$app0->version = '1.01';
+$app0->Xd = 300;
+$out = buildJPEG($jpeg);
+$sofPos = strpos($data, "\xff\xc0");
+$dqtPos = strpos($data, "\xff\xdb");
+$expect = $data;
+$expect = substr_replace($expect, "\x05\x67\x12\x34", $sofPos + 5, 4);
+$expect = substr_replace($expect, "\xee", $dqtPos + 4 + 65 + 64, 1);
+$expect = substr_replace($expect, "\x01\x01\x01\x01\x2c", 2 + 4 + 5, 5);
+check('rebuild with edited SOF/DQT/APP0', bin2hex($expect), bin2hex($out));
+$jpeg = parseJPEG(dataFile('restart.jpg'), 'IO_JPEG_Editor');
+$jpeg->rebuild();
+chunkOf($jpeg, 'DRI')->Ri = 0x0102;
+chunkOf($jpeg, 'APP14')->ColorTransform = 0;
+chunkOf($jpeg, 'SOS')->Ss = 5;
+$out = parseJPEG(buildJPEG($jpeg));
+check('rebuild with edited DRI/APP14/SOS', array(0x0102, 0, 5),
+      array(chunkOf($out, 'DRI')->Ri, chunkOf($out, 'APP14')->ColorTransform, chunkOf($out, 'SOS')->Ss));
+$jpeg = parseJPEG(dataFile('cmyk.jpg'), 'IO_JPEG_Editor');
+$adobe = new IO_JPEG_Chunk();
+$adobe->marker = 0xEE;
+$adobe->ID = 'Adobe';
+$adobe->Version = 101;
+$adobe->Flag0 = 0;
+$adobe->Flag1 = 0;
+$adobe->ColorTransform = 0;
+$jpeg->updateOrAppendChunkBetween($adobe, null, 0xDB);
+check('replace APP14 from fields', bin2hex("\xff\xd8".seg(0xEE, "Adobe\x00\x65\0\0\0\0\0").substr(dataFile('cmyk.jpg'), 18)), bin2hex(buildJPEG($jpeg)));
+
+// dump(): no warnings (summary, detail, hexdump)
+foreach ($good as $name) {
+    $jpeg = parseJPEG(dataFile($name));
+    check("dump $name", array(), errorsOf(function () use ($jpeg) { $jpeg->dump(array()); }));
+    check("dump detail hexdump $name", array(), errorsOf(function () use ($jpeg) { $jpeg->dump(array('detail' => true, 'hexdump' => true)); }));
+}
+$out = dumpJPEG(parseJPEG(dataFile('restart.jpg')), array('detail' => true));
+check('dump restart APP14', true, strpos($out, "APP14: length=14\n\tID:Adobe Version:100 Flag0:0x8000 Flag1:0x0001 ColorTransform:1(YCbCr)\n") !== false);
+check('dump restart DRI', true, strpos($out, "DRI: length=4\n\tLr:4 Ri:1\n") !== false);
+check('dump restart RST3 fill', true, strpos($out, "\nRST3: length=(null) fill=1\n") !== false);
+check('dump restart EOI fill', true, strpos($out, "\nEOI: fill=3\n\tEnd Of Image\n") !== false);
+check('dump restart DQT 16-bit', true, strpos($out, "\tPq:1(16-bit) Tq:0\n\tQ[k=0x00]:012c 0190 ") !== false);
+$out = dumpJPEG(parseJPEG(dataFile('baseline.jpg')), array('detail' => true));
+check('dump baseline APP0', true, strpos($out, "\tverison:1.02\n\tU:1 Xd:72 Yd:72 Xt:2 Yt:1 RGB(size:6)\n") !== false);
+check('dump baseline SOF0', true, strpos($out, "\t(Baseline DCT)\n\tP:8 Y:16 X:16 Nf:3\n\t[i=1]: C:1 H:2 V:2 Tq:0\n") !== false);
+check('dump baseline DHT', true, strpos($out, "\tTc:1(AC) Th:0\n\tLi:0 2 1 3 0 0 0 0 0 0 0 0 0 0 0 0\n") !== false);
+check('dump baseline SOS', true, strpos($out, "\tSs:0 Se:63 Ah:0 Al:0\n\t(Huffman Encoded Data len:43)\n") !== false);
+$out = dumpJPEG(parseJPEG(dataFile('progressive.jpg')), array('detail' => true));
+check('dump progressive SOF2', true, strpos($out, "SOF2: length=11\n\t(Progressive DCT, Huffman coding)\n") !== false);
+
+// broken input
+checkThrows('parse truncated entropy data', function () { parseJPEG(dataFile('truncated.jpg')); });
+checkThrows('parse truncated segment', function () { parseJPEG(dataFile('truncated_seg.jpg')); });
+checkThrows('parse truncated length field', function () { parseJPEG("\xff\xd8\xff\xe0\x00"); });
+checkThrows('dump without chunks', function () { parseJPEG('')->dump(array()); });
+checkThrows('build without chunks', function () { buildJPEG(parseJPEG('')); });
+function detailOf($marker, $data) {
+    $jpeg = parseJPEG("\xff\xd8".seg($marker, $data)."\xff\xd9");
+    $jpeg->_jpegChunk[1]->_parseChunkDetail();
+}
+checkThrows('SOF0 short component list', function () { detailOf(0xC0, "\x08\x00\x08\x00\x08\x03\x01\x11\x00"); });
+checkThrows('DHT short values', function () { detailOf(0xC4, "\x00".str_repeat("\x00", 15)."\x05\x01\x02"); });
+checkThrows('DQT short 16-bit table', function () { detailOf(0xDB, "\x10".str_repeat("\x01", 100)); });
+checkThrows('APP0 short JFIF', function () { detailOf(0xE0, "JFIF\0\x01\x02"); });
+checkThrows('APP14 short', function () { detailOf(0xEE, "Adobe\x00\x64"); });
+checkThrows('DRI short', function () { detailOf(0xDD, ""); });
+
+rmdir($tmpDir);
+
 echo "passed: $passed, failed: $failed".PHP_EOL;
 exit($failed ? 1 : 0);
