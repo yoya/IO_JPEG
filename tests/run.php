@@ -549,6 +549,88 @@ checkThrows('APP0 short JFIF', function () { detailOf(0xE0, "JFIF\0\x01\x02"); }
 checkThrows('APP14 short', function () { detailOf(0xEE, "Adobe\x00\x64"); });
 checkThrows('DRI short', function () { detailOf(0xDD, ""); });
 
+/*
+ * sample/*.php on the test data
+ */
+function sample($script, $args, $cwd = null) {
+    global $root;
+    return runPHP(array_merge(array($root.'/sample/'.$script), $args), $cwd);
+}
+foreach ($good as $name) {
+    $f = "$dataDir/$name";
+    foreach (array(array(), array('-D'), array('-h'), array('-S')) as $opt) {
+        list($status, $out, $err) = sample('jpegdump.php', array_merge($opt, array('-f', $f)));
+        check("jpegdump ".join(' ', $opt)." $name", array(0, '', 1), array($status, $err, preg_match('/^SOI:\n.*\nEOI:/s', $out)));
+    }
+    list($status, $out, $err) = sample('jpegrebuild.php', array($f));
+    check("jpegrebuild $name", array(0, '', md5(dataFile($name))), array($status, $err, md5($out)));
+    list($status, $out, $err) = sample('jpegrepair.php', array('-f', $f));
+    check("jpegrepair $name", array(0, '', md5(dataFile($name))), array($status, $err, md5($out)));
+    list($status, $out, $err) = sample('jpegcolor.php', array('-f', $f));
+    check("jpegcolor $name", array(0, '', 1), array($status, $err, preg_match('/\tComponentID: /', $out)));
+}
+list($status, $out, $err) = sample('jpegdump.php', array('-f', "$dataDir/trailing.jpg"));
+check('jpegdump trailing', array(0, 8, 1), array($status, substr_count($err, 'WARNING: parse marker1='), preg_match('/\nEOI:\n\tEnd Of Image\n$/', $out)));
+list($status, $out, $err) = sample('jpegdump.php', array('-f', "$dataDir/truncated.jpg"));
+check('jpegdump truncated', array(0, '', 1), array($status, $err, preg_match('/^Exception/', $out)));
+
+// jpegdelmeta: keeps SOI, APP0, DQT, SOFn, DHT, DRI, SOS, RSTn, EOI
+$tests = array('baseline.jpg' => array(0xFE), 'restart.jpg' => array(0xE1, 0xE2, 0xEE), 'progressive.jpg' => array(), 'cmyk.jpg' => array(0xEE));
+foreach ($tests as $name => $removed) {
+    $expect = dataFile($name);
+    foreach ($removed as $m) {
+        $expect = withoutSeg($expect, $m);
+    }
+    list($status, $out, $err) = sample('jpegdelmeta.php', array('-f', "$dataDir/$name"));
+    check("jpegdelmeta $name", array(0, '', bin2hex($expect)), array($status, $err, bin2hex($out)));
+}
+
+// jpegchunk -s / -s -c / -S, jpegcat
+list($status, $out, $err) = sample('jpegchunk.php', array('-s', '-f', "$dataDir/restart.jpg"), $tmpDir);
+$files = glob("$tmpDir/*.jc");
+check('jpegchunk -s', array(0, '', 19, '00_SOI.jc', '12_RST3.jc', '18_EOI.jc'),
+      array($status, $err, count($files), basename($files[0]), basename($files[12]), basename($files[18])));
+check('jpegchunk -s RST3 bytes', "\xff\xff\xd3".substr(dataFile('restart.jpg'), strpos(dataFile('restart.jpg'), "\xff\xff\xd3") + 3, 8), file_get_contents($files[12]));
+list($status, $out, $err) = sample('jpegcat.php', $files);
+check('jpegcat restart', array(0, '', md5(dataFile('restart.jpg'))), array($status, $err, md5($out)));
+cleanTmp();
+list($status, $out, $err) = sample('jpegchunk.php', array('-s', '-c', '-f', "$dataDir/progressive.jpg"), $tmpDir);
+$files = glob("$tmpDir/*.jpg");
+check('jpegchunk -s -c', array(0, '', 10, md5(dataFile('progressive.jpg')), "\xff\xd8".seg(0xE0, "JFXX\0\x10\xff\xd8\xff\xd9")),
+      array($status, $err, count($files), md5(file_get_contents(end($files))), file_get_contents($files[1])));
+cleanTmp();
+list($status, $out, $err) = sample('jpegchunk.php', array('-s', '-S', '-f', "$dataDir/restart.jpg"), $tmpDir);
+$files = array_map('basename', glob("$tmpDir/*.jc"));
+check('jpegchunk -s -S', array(0, '', array('00_SOI.jc', '01_APP1.jc', '02_APP2.jc', '03_APP14.jc', '04_DQT.jc', '05_SOF1.jc', '06_DHT.jc', '07_DRI.jc', '08_SOS.jc', '09_EOI.jc')),
+      array($status, $err, $files));
+cleanTmp();
+
+// jpegcolor
+list($status, $out, $err) = sample('jpegcolor.php', array('-f', "$dataDir/cmyk.jpg"));
+check('jpegcolor cmyk dump', array(0, '', 1, 1), array($status, $err,
+      preg_match('/ColorTransform:2\(YCCK\)\n/', $out), preg_match('/\tComponentID: 67\(C\) 77\(M\) 89\(Y\) 75\(K\) \n/', $out)));
+$cmyk = dataFile('cmyk.jpg');
+list($status, $out, $err) = sample('jpegcolor.php', array('-f', "$dataDir/cmyk.jpg", '-A'));
+check('jpegcolor -A', array(0, '', bin2hex(withoutSeg($cmyk, 0xEE))), array($status, $err, bin2hex($out)));
+list($status, $out, $err) = sample('jpegcolor.php', array('-f', "$dataDir/cmyk.jpg", '-j'));
+check('jpegcolor -j', array(0, '', bin2hex("\xff\xd8".seg(0xE0, "JFIF\0\x01\x01\x00\x00\x01\x00\x01\x00\x00").substr($cmyk, 2))), array($status, $err, bin2hex($out)));
+list($status, $out, $err) = sample('jpegcolor.php', array('-f', "$dataDir/baseline.jpg", '-J'));
+check('jpegcolor -J', array(0, '', bin2hex(withoutSeg(dataFile('baseline.jpg'), 0xE0))), array($status, $err, bin2hex($out)));
+list($status, $out, $err) = sample('jpegcolor.php', array('-f', "$dataDir/cmyk.jpg", '-c', '1,2,3,4'));
+$out = parseJPEG($out);
+check('jpegcolor -c', array(0, '', array(1, 2, 3, 4), array(1, 2, 3, 4)), array($status, $err, chunkOf($out, 'SOF0')->C, chunkOf($out, 'SOS')->Cs));
+list($status, $out, $err) = sample('jpegcolor.php', array('-f', "$dataDir/restart.jpg", '-a', '0'));
+$out = parseJPEG($out);
+$c = chunkOf($out, 'APP14');
+check('jpegcolor -a 0 replaces APP14', array(0, '', 0, 0x4000, 0, 3), array($status, $err, $c->ColorTransform, $c->Flag0, $c->Flag1, array_search('APP14', markers($out))));
+list($status, $out, $err) = sample('jpegcolor.php', array('-f', "$dataDir/cmyk.jpg", '-c', '1,2'));
+check('jpegcolor -c count mismatch', array(1, '', "nComponents:2 !== SOF_Nf:4\n"), array($status, $out, $err));
+
+// usage
+foreach (array('jpegdump.php', 'jpegrebuild.php', 'jpegrepair.php', 'jpegdelmeta.php', 'jpegchunk.php', 'jpegcolor.php', 'jpegcat.php') as $script) {
+    list($status, $out, $err) = sample($script, array());
+    check("$script usage", array(1, 1), array($status, preg_match('/Usage/', $out.$err)));
+}
 rmdir($tmpDir);
 
 echo "passed: $passed, failed: $failed".PHP_EOL;
