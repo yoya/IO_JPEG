@@ -143,6 +143,9 @@ class IO_JPEG_Chunk {
             break;
         default:
             $length = $bitin->getUI16BE();
+            if ($length < 2) { // the length field counts itself
+                throw new Exception(sprintf("segment length:%d < 2 marker:0x%02X offset:0x%X", $length, $marker2, $offset));
+            }
             $this->data = $bitin->getData($length - 2);
             $this->length = $length;
             break;

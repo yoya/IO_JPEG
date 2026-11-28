@@ -536,6 +536,9 @@ check('dump progressive SOF2', true, strpos($out, "SOF2: length=11\n\t(Progressi
 checkThrows('parse truncated entropy data', function () { parseJPEG(dataFile('truncated.jpg')); });
 checkThrows('parse truncated segment', function () { parseJPEG(dataFile('truncated_seg.jpg')); });
 checkThrows('parse truncated length field', function () { parseJPEG("\xff\xd8\xff\xe0\x00"); });
+// a segment length below 2 (the length field itself) must not shift the read position
+checkThrows('parse segment length 1', function () { parseJPEG("\xff\xd8\xff\xfe\x00\x01abc\xff\xd9"); });
+checkThrows('parse segment length 0', function () { parseJPEG("\xff\xd8\xff\xfe\x00\x00abc\xff\xd9"); });
 checkThrows('dump without chunks', function () { parseJPEG('')->dump(array()); });
 checkThrows('build without chunks', function () { buildJPEG(parseJPEG('')); });
 function detailOf($marker, $data) {
